@@ -1,6 +1,13 @@
 
 08. Exploring and describing data
 
+Today's class draws heavily from:
+
+1. Hadley Wickham et al.'s R for Data Science (https://r4ds.hadley.nz/eda)
+
+2. Wright et al.'s Tidyverse Skills for Data Science
+(https://jhudatascience.org/tidyversecourse/wrangle-data.html)
+
 # load packages
 
 Here we load the basic suite of {tidyverse} packages, along with some other useful packages you'll explore at the end of class.

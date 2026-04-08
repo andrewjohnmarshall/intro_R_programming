@@ -1,6 +1,8 @@
 
 07. Wrangling data
 
+This lesson draws heavily from R for Data Science (2e) by Hadley Wickham, Mine Çetinkaya-Rundel, and Garrett Grolemund: https://r4ds.hadley.nz
+
 # defining tidy data
 
 ## data structure
