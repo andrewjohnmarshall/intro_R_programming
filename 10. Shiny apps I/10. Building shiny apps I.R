@@ -1,0 +1,697 @@
+#' 
+#' Class 10. Building shiny apps I
+#' 
+#' 
+#' # Packages
+#' 
+## ------------------------------------------------------------------
+
+library(tidyverse)
+library(shiny)
+library(bsicons)
+
+
+#' 
+#' # Framing
+#' 
+#' {shiny} is an R package initially written by Joe Cheng that allows you to easily create polished, interactive web apps. It allows you to take your work in R and expose it via a web browser so that anyone can use it. 
+#' 
+#' Using {shiny} minimizes the pain of creating web apps by:
+#' 
+#' Providing a set of user interface (UI) functions that generate the code needed for common tasks, allowing you to produce web apps without needing to know HTML, CSS, or JavaScript.
+#' 
+#' Introducing a new style of programming called "reactive programming" which automatically tracks the dependencies of pieces of code. This means that whenever an input changes, {shiny} can automatically figure out how to update all the related outputs.
+#' 
+#' According to Hadley Wickham, people use Shiny to, for example:
+#' 
+#' - *Create dashboards* that track important high-level performance indicators, while facilitating drill down into metrics that need more investigation.
+#' 
+#' - *Replace hundreds of pages of PDFs with interactive apps* that allow the user to jump to the exact slice of the results that they care about.
+#' 
+#' - *Communicate complex models* to a non-technical audience with informative visualizations and interactive sensitivity analysis.
+#' 
+#' - *Provide self-service data analysis for common workflows*, replacing email requests with a Shiny app that allows people to upload their own data and perform standard analyses. You can make sophisticated R analyses available to users with no programming skills.
+#' 
+#' - *Create interactive demos* for teaching statistics and data science concepts that allow learners to tweak inputs and observe the downstream effects of those changes in an analysis.
+#' 
+#' In short, {shiny} gives you the ability to pass on some of your R superpowers to anyone who can use the web.
+#' 
+#' This text below is mostly verbatim from Posit's Welcome to Shiny website (https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/index.html), but having it organized in this Rmd will make it easier for you to work through the material. I have added some additional clarifying instructions in places, fixed some out of date elements, and altered the text to follow stylistic conventions we've been using all term for {packages} and `functions()`. 
+#' 
+#' Following general convention, I will refer to apps built with the {shiny} package as "Shiny apps" (without the {} designation I normally use to designate packages in class code). But when referring to the package itself, I'll stick with my convention and used the {shiny} designation. Before we dive in, here are some useful resources: 
+#' 
+#' You can download a handy {shiny} cheat sheet here: https://shiny.posit.co/r/articles/start/cheatsheet/
+#' 
+#' There are many useful relevant articles here:
+#' https://shiny.posit.co/r/articles/
+#' 
+#' And Hadley Wickham's book Mastering Shiny is available here:
+#' https://mastering-shiny.org/
+#' 
+#' Now, onto the material.
+#' 
+#' --------------------------------------------
+#' 
+#' # Introduction to {shiny}
+#' 
+#' {shiny} is an R package that makes it easy to build interactive web applications (apps) straight from R. 
+#' 
+#' {shiny} has eleven built-in examples that each demonstrate how it works. Each example is a self-contained Shiny app. You will be exploring several of them in the problem set for today.
+#' 
+#' The Hello Shiny example plots a histogram of R’s faithful data set (on eruptions of the Old Faithful Geyser in Yellowstone National Park) with a configurable number of bins. Users can change the number of bins with a slider bar, and the app will immediately respond to their input. You’ll use Hello Shiny to explore the structure of a Shiny app and to create your first app.
+#' 
+#' To run Hello Shiny, type:
+#' 
+## ------------------------------------------------------------------
+
+runExample("01_hello")
+
+
+#' 
+#' ## structure of a Shiny App
+#' 
+#' Shiny apps are contained in a single script called 'app.R'. The script 'app.R' lives in a directory (for example, newdir/) and the app can be run with `runApp("newdir")`.
+#' 
+#' 'app.R' has three components:
+#' 
+#' - a *user interface (UI) object*: controls the layout and appearance of your app
+#' 
+#' - a *server function*: contains the instructions that your computer needs to build your app
+#' 
+#' - a *call to the shinyApp function*: creates Shiny app objects from an explicit UI/server pair
+#' 
+#' In the Hello Shiny example above, the UI object is:
+#' 
+## ------------------------------------------------------------------
+
+library(shiny)
+library(bslib) 
+
+# Define UI for app that draws a histogram ----
+ui <- page_sidebar(
+  # App title ----
+  title = "Hello Shiny!",
+  # Sidebar panel for inputs ----
+  sidebar = sidebar(
+    # Input: Slider for the number of bins ----
+    sliderInput(
+      inputId = "bins",
+      label = "Number of bins:",
+      min = 1,
+      max = 50,
+      value = 30
+    )
+  ),
+  # Output: Histogram ----
+  plotOutput(outputId = "distPlot")
+)
+
+
+#' 
+#' Note: {bslib} is a package that is automatically downloaded when you install {shiny}. It provides a UI toolkit to make Shiny UIs more appealing and user friendly. For more, see: https://rstudio.github.io/bslib/index.html
+#' 
+#' The server function for Hello Shiny is:
+#' 
+## ------------------------------------------------------------------
+
+# Define server logic required to draw a histogram ----
+server <- function(input, output) {
+
+  # Histogram of the Old Faithful Geyser Data ----
+  # with requested number of bins
+  # This expression that generates a histogram is wrapped in a call
+  # to renderPlot to indicate that:
+  #
+  # 1. It is "reactive" and therefore should be automatically
+  #    re-executed when inputs (input$bins) change
+  # 2. Its output type is a plot
+  output$distPlot <- renderPlot({
+
+    x    <- faithful$waiting
+    bins <- seq(min(x), max(x), length.out = input$bins + 1)
+
+    hist(x, breaks = bins, col = "#007bc2", border = "white",
+         xlab = "Waiting time to next eruption (in mins)",
+         main = "Histogram of waiting times")
+
+    })
+
+}
+
+
+#' 
+#' At one level, the Hello Shiny server function is very simple. The script does some calculations and then plots a histogram with the requested number of bins.
+#' 
+#' However, you’ll also notice that most of the script is wrapped in a call to `renderPlot()`. The comment above the function explains a bit about this, but if you find it confusing, don’t worry. We’ll cover this concept in much more detail soon.
+#' 
+#' Play with the Hello Shiny app and review the source code. Use the slider to change the number of histogram bins, and click the arrow to show or hide the sidebar. Try to develop a feel for how the app works: 
+#' 
+## ------------------------------------------------------------------
+
+library(shiny)
+shinyApp(ui = ui, server = server)
+
+
+#' 
+#' Note, the 'ui' and 'server' were defined in the previous chunks, so if you ran those chunks this should run the app. 
+#' 
+#' Your R session will be busy while the Hello Shiny app is active, so you will not be able to run any R commands. R is monitoring the app and executing the app’s reactions. To get your R session back, hit escape or click the stop sign icon (found in the upper right corner of the RStudio console panel).
+#' 
+#' ## running an app
+#' 
+#' Every Shiny app has the same structure: an 'app.R' file that contains ui and server. You can create a Shiny app by making a new directory (i.e., folder) and saving an 'app.R' file inside it. It is recommended that each app will live in its own unique directory.
+#' 
+#' You can run a Shiny app by giving the name of its directory to the function `runApp()`. For example if your Shiny app is in a directory called "my_app", run it with the following code:
+#' 
+## ------------------------------------------------------------------
+
+library(shiny)
+runApp("my_app")
+
+
+#' 
+#' Note: `runApp()` is similar to `read.csv()`, `read.table()`, and many other functions in R. The first argument of `runApp()` is the file path from your working directory to the app’s directory. The code above assumes that the app directory is in your working directory. In this case, the file path is just the name of the directory.
+#' 
+#' (In case you are wondering, the Hello Shiny app’s files are saved in a special system directory called "01_hello". This directory is designed to work with the `runExample("01_hello")` call.)
+#' 
+#' ## your turn
+#' 
+#' Create a new directory named "App-1" in your working directory (under Files tab, click on New Folder and name it "App-1"). Next, open a new R script (File -> New File -> R Script), paste in the code below, and save the file as 'app.R' in the directory (a.k.a. folder) "App-1" that you just created. Note you want to paste in the code only, not the ```{r}.... ``` text delineating a code chunk because code chunks are not recognized in .R format files. Anything in a .R file is treated as code, so anything not commented out with # will be executed.
+#' 
+## ------------------------------------------------------------------
+
+library(shiny)
+library(bslib)
+
+# Define UI for app that draws a histogram ----
+ui <- page_sidebar(
+  # App title ----
+  title = "Hello Shiny!",
+  # Sidebar panel for inputs ----
+  sidebar = sidebar(
+    # Input: Slider for the number of bins ----
+    sliderInput(
+      inputId = "bins",
+      label = "Number of bins:",
+      min = 1,
+      max = 50,
+      value = 30
+    )
+  ),
+  # Output: Histogram ----
+  plotOutput(outputId = "distPlot")
+)
+
+# Define server logic required to draw a histogram ----
+server <- function(input, output) {
+
+  # Histogram of the Old Faithful Geyser Data ----
+  # with requested number of bins
+  # This expression that generates a histogram is wrapped in a call
+  # to renderPlot to indicate that:
+  #
+  # 1. It is "reactive" and therefore should be automatically
+  #    re-executed when inputs (input$bins) change
+  # 2. Its output type is a plot
+  output$distPlot <- renderPlot({
+
+    x    <- faithful$waiting
+    bins <- seq(min(x), max(x), length.out = input$bins + 1)
+
+    hist(x, breaks = bins, col = "#007bc2", border = "white",
+         xlab = "Waiting time to next eruption (in mins)",
+         main = "Histogram of waiting times")
+
+    })
+
+}
+
+shinyApp(ui = ui, server = server)
+
+
+#' 
+#' Once you have done this, run the new app you have just created using the following code:
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' It should launch an app just like the Hello World app we saw above, but this time it is a duplicate app that you have just created. Once you have verified that the app works, close the app window and go back to the 'app.R' file you created and modify the code to:
+#' 
+#' 1. Change the title from “Hello Shiny!” to “Hello World!”.
+#' 
+#' 2. Set the minimum value of the slider bar to 5.
+#' 
+#' 3. Change the histogram border color from "white" to "orange".
+#' 
+#' Once you have made these changes, save 'app.R' and relaunch your app using the same code:
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' It should reflect the three changes you have just made.
+#' 
+#' By default, Shiny apps display in “normal” mode. Hello Shiny and the other built in examples display in “showcase mode”, a different mode that displays the 'app.R' script alongside the app. If you would like your app to display in showcase mode, use the following code:
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1", display.mode = "showcase")
+
+
+#' 
+#' ## other examples
+#' 
+#' You can create Shiny apps by copying and modifying existing Shiny apps. The Shiny gallery (https://shiny.posit.co/r/gallery/) provides some good examples or you can use the eleven pre-built Shiny examples listed below.
+#' 
+## ------------------------------------------------------------------
+
+runExample("01_hello")      # a histogram
+runExample("02_text")       # tables and data frames
+runExample("03_reactivity") # a reactive expression
+runExample("04_mpg")        # global variables
+runExample("05_sliders")    # slider bars
+runExample("06_tabsets")    # tabbed panels
+runExample("07_widgets")    # help text and submit buttons
+runExample("08_html")       # Shiny app built from HTML
+runExample("09_upload")     # file upload wizard
+runExample("10_download")   # file download wizard
+runExample("11_timer")      # an automated timer
+
+
+#' 
+#' Each demonstrates a feature of Shiny apps. Run each of them to get a sense for what they do and how they might serve as useful templates in the future. *Don't skip this step; in the past students have found it helpful to get a better sense of {shiny}'s capabilities.*
+#' 
+#' 
+#' # Building a user interface
+#' 
+#' Now that you understand the structure of a Shiny app, it’s time to build your first app from scratch. This section will show you how to build a user interface for your app. You will learn how to lay out the user interface and then add text, images, and other HTML elements to your Shiny app.
+#' 
+#' We’ll use the App-1 app you made in the last section. To get started, open its app.R file. Edit the script to match the one below. (In other words, delete the old code and replace it with the code below.)
+#' 
+## ------------------------------------------------------------------
+
+library(shiny)
+library(bslib)
+
+# Define UI ----
+ui <- page_sidebar(
+)
+
+# Define server logic ----
+server <- function(input, output) {
+
+}
+
+# Run the app ----
+shinyApp(ui = ui, server = server)
+
+
+#' 
+#' This code is the bare minimum needed to create a Shiny app. The result is an empty app with a blank user interface, an appropriate starting point for this lesson.
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' ## layout
+#' 
+#' Use the `page_sidebar()` function to create a page with a sidebar. You lay out the user interface of your app by placing elements in the page_sidebar function. The ui function below creates a user interface with a title, sidebar panel, and main panel.
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_sidebar(
+  title = "title panel",
+  sidebar = sidebar("sidebar"),
+  "main contents"
+)
+
+
+#' 
+#' Replace the *ui portion* of your app in 'app.R' with this code. Once you do that and save the changes, you can run the app to see the changes:
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' You can add additional elements to the main panel of the page by supplying them to `page_sidebar()`. By default, the sidebar panel will appear on the left side of your app. You can move it to the right side by giving sidebar the optional argument 'position = "right"'. Replace the ui portion of your app with the following code, save the changes, and run the app to see the changes:
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_sidebar(
+  title = "title panel",
+  sidebar = sidebar("Sidebar", position = "right"),
+  "Main contents"
+)
+
+
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' Note that you can run the app with the preceding code, or click the "Run App" button in the top right of the 'app.R' window.
+#' 
+#' `page_sidebar()` creates a sidebar layout that fills the page, and is a quick way to create a page with a sidebar. If you’d like to create a floating sidebar layout that can appear anywhere on the page, use `page_fluid()` and `layout_sidebar()`. Try this out by adding the following code to your app's ui components and running the app again.
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_fluid(
+  layout_sidebar(
+    sidebar = sidebar("Sidebar"),
+    "Main contents"
+  )   
+)
+
+
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' You can also create more advanced layouts. For example, `page_navbar()` creates a multi-page user interface that includes a navigation bar. Or you can use `layout_columns()` or `layout_rows()` to build your layout up from a grid system. If you’d like to learn more about these advanced options, read the Shiny Application Layout Guide: https://shiny.posit.co/r/articles/build/layout-guide/. We will stick with `layout_sidebar()` in this starting exercise.
+#' 
+#' ## cards
+#' 
+#' Cards are a common organizing unit for modern user interfaces. You can use the function `card()` to create a card in your Shiny app.
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_sidebar(
+  title = "title panel",
+  sidebar = sidebar("Sidebar"),
+  card()
+)
+
+
+#' 
+#' `card()` creates a regular container with borders and padding.
+#' 
+#' Cards are useful for grouping related information. Add content to a card by supplying arguments to `card()`:
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_sidebar(
+  title = "title panel",
+  sidebar = sidebar("Sidebar"),
+  card(
+    "Card content"
+  )
+)
+
+
+#' 
+#' You can also use functions like `card_header()`, `card_footer()`, and `card_image()` to add card elements to a card. For example, `card_header()` adds a header. Replace the ui component of your app with the following code and run the app to see the effects.
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_sidebar(
+  title = "title panel",
+  sidebar = sidebar("Sidebar"),
+  card(
+    card_header("Card header"),
+    "Card body"
+  )
+)
+
+
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' For more information about cards, see : https://rstudio.github.io/bslib/articles/cards/
+#' 
+#' ## value boxes
+#' 
+#' Value boxes are another useful UI component. Use value boxes to highlight important values in your app.
+#' 
+#' We create a value box with the function `value_box()`, and define the value box’s title and value with the title and value arguments.
+#' 
+#' ui <- page_sidebar(
+#'   ...
+#'   value_box(
+#'     title = "Value box",
+#'     value = 100
+#'   ),
+#'   ...
+#' )
+#' 
+#' Optionally, set the value box’s theme and use the showcase argument to add UI elements like icons to the value box. Here the code uses an icon from Bootstrap icons: https://rstudio.github.io/bsicons/reference/bs_icon.html, which is a free, high quality, open source icon library with over 2,000 icons in .svg format. You can search for icons by name here: https://icons.getbootstrap.com/
+#' 
+#' To use Bootstrap icons, use the function `bsicons::bs_icon()`. Add this code to your app and run it to see its effects.
+#' 
+## ------------------------------------------------------------------
+
+ui <- page_sidebar(
+  title = "title panel",
+  sidebar = sidebar("Sidebar"),
+  value_box(
+    title = "Value box",
+    value = 100,
+    showcase = bsicons::bs_icon("bar-chart"),
+    theme = "teal"
+  ),
+  card("Card"),
+  card("Another card")
+)
+
+
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' Search for a new icon on https://icons.getbootstrap.com/ and replace the text "bar-chart" in your app with the name of the new icon and rerun the app.
+#' 
+#' For more on value boxes, see: https://rstudio.github.io/bslib/articles/value-boxes/index.html
+#' 
+#' ## your turn
+#' 
+#' You can use Shiny’s layout, card, and value box functions to create attractive and useful user interfaces. See how well you understand these functions by recreating the Shiny app pictured in the file "my-shiny-app.jpg" which is located in today's project working directory. Use the examples in this tutorial to work on it and then test it out. This will probably take you some time, which is entirely appropriate. Here are two useful hints:
+#' 
+#' 1. You can add text formatted as code to elements (e.g., cards, sidebars) by adding the following text in the appropriate element (being sure to add a comma at the end if appropriate):
+#' 
+## ------------------------------------------------------------------
+
+code('this is a chunk of formatted code')
+
+
+#' 
+#' 2. You can add an image to a card using `card_image()`. To identify the image to use there are two options. First, you may add a url to the image:
+#' 
+## ------------------------------------------------------------------
+
+card_image("www.my-image-url.svg")
+
+
+#' 
+#' Second, and more commonly, you create a folder inside your Shiny app directory (here, the folder called "App-1) called "www" and place the image you want to use in that folder. (A file containing the image you want is available in the working directory, called "shiny.png".) Then, you call it with:
+#' 
+## ------------------------------------------------------------------
+
+card_image("www/filename.png")
+
+
+#' 
+#' You can use images of various formats, but .png and .svg are most common. For more information, ask for help `?card_image`.
+#' 
+#' Spend some time trying to solve this on your own. The code I used to create the app depicted in the "my-shiny-app.jpg" screen shot is available in 'model_answer_1.R' in the project directory, but I strongly advise you to try to create it from scratch on your own.
+#' 
+#' Now that you can place simple content in your user interface, let’s look at how you would place more complicated content, like widgets. Widgets are interactive web elements that your user can use to control the app. This is our last topic for the day.
+#' 
+#' 
+#' 
+#' 
+#' # Add control widgets
+#' 
+#' Widgets provide a way for your users to send messages to the Shiny app.
+#' 
+#' Shiny widgets collect a value from your user. When a user changes the widget, the value will change as well. 
+#' 
+#' {shiny} comes with a family of pre-built widgets, each created with a transparently named R function. For example, {shiny} provides a function named `actionButton()` that creates an action button and a function named `sliderInput()` that creates a slider bar.
+#' 
+#' The standard Shiny widgets are:
+#' 
+#' function	              widget
+#' `actionButton()`	      Action Button
+#' `checkboxGroupInput()`	A group of check boxes
+#' `checkboxInput()`     	A single check box
+#' `dateInput()`         	A calendar to aid date selection
+#' `dateRangeInput()`    	A pair of calendars for selecting a date range
+#' `fileInput()`         	A file upload control wizard
+#' `helpText()`	          Help text that can be added to an input form
+#' `numericInput()`	      A field to enter numbers
+#' `radioButtons()`      	A set of radio buttons
+#' `selectInput()`       	A box with choices to select from
+#' `sliderInput()`	        A slider bar
+#' `submitButton()`	      A submit button
+#' `textInput()`         	A field to enter text
+#' 
+#' The file "basic-widgets.png" (located in the working directory for today's class) provides examples of what these widgets look like.
+#' 
+#' You can add widgets to your web page in the same way that you added other content above.
+#' 
+#' Each widget function requires several arguments. The first two arguments for each widget are
+#' 
+#' 1. a name for the widget: The user will not see this name, but you can use it to access the widget’s value. The name should be a character string.
+#' 
+#' 2. a label: This label will appear with the widget in your app. It should be a character string, but it can be an empty string "".
+#' 
+#' In this example, the name is “action” and the label is “ACTION”: 
+#' 
+## ------------------------------------------------------------------
+
+actionButton("action", label = "ACTION")
+
+
+#' 
+#' The remaining arguments vary from widget to widget, depending on what the widget needs to do its job. They include things like initial values, ranges, and increments. You can find the exact arguments needed by a widget on the widget function’s help page, (e.g., `?selectInput`).
+#' 
+#' The "app.R" script below makes the app pictured in "basic-widgets.png". Change your own App-1/app.R script to match it, and then launch the app.
+#' 
+## ------------------------------------------------------------------
+
+library(shiny)
+
+# Define UI ----
+ui <- page_fluid(
+  titlePanel("Basic widgets"),
+  layout_columns(
+    col_width = 3,
+    card(
+      card_header("Buttons"),
+      actionButton("action", "Action"),
+      submitButton("Submit")
+    ),
+    card(
+      card_header("Single checkbox"),
+      checkboxInput("checkbox", "Choice A", value = TRUE)
+    ),
+    card(
+      card_header("Checkbox group"),
+      checkboxGroupInput(
+        "checkGroup",
+        "Select all that apply",
+        choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3),
+        selected = 1
+      )
+    ),
+    card(
+      card_header("Date input"),
+      dateInput("date", "Select date", value = "2014-01-01")
+    ),
+    card(
+      card_header("Date range input"),
+      dateRangeInput("dates", "Select dates")
+    ),
+    card(
+      card_header("File input"),
+      fileInput("file", label = NULL)
+    ),
+    card(
+      card_header("Help text"),
+      helpText(
+        "Note: help text isn't a true widget,",
+        "but it provides an easy way to add text to",
+        "accompany other widgets."
+      )
+    ),
+    card(
+      card_header("Numeric input"),
+      numericInput("num", "Input number", value = 1)
+    ),
+    card(
+      card_header("Radio buttons"),
+      radioButtons(
+        "radio",
+        "Select option",
+        choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3),
+        selected = 1
+      )
+    ),
+    card(
+      card_header("Select box"),
+      selectInput(
+        "select",
+        "Select option",
+        choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3),
+        selected = 1
+      )
+    ),
+    card(
+      card_header("Sliders"),
+      sliderInput(
+        "slider1",
+        "Set value",
+        min = 0,
+        max = 100,
+        value = 50
+      ),
+      sliderInput(
+        "slider2",
+        "Set value range",
+        min = 0,
+        max = 100,
+        value = c(25, 75)
+      )
+    ),
+    card(
+      card_header("Text input"),
+      textInput("text", label = NULL, value = "Enter text...")
+    )
+  )
+)
+
+# Define server logic ----
+server <- function(input, output) {
+
+}
+
+# Run the app ----
+shinyApp(ui = ui, server = server)
+
+
+#' 
+## ------------------------------------------------------------------
+
+runApp("App-1")
+
+
+#' 
+#' Play with each widget to get a feel for what it does. Experiment with changing the values of the widget functions and observe the effects. If you are interested in the layout scheme for this Shiny app, read the description in the application layout guide: https://shiny.posit.co/r/articles/build/layout-guide/. This lesson will not cover this slightly more complicated layout scheme, but it is interesting to note what it does.
+#' 
+#' ## your turn
+#' 
+#' Rewrite your ui to create the user interface displayed in the "censusviz.png" file. Notice that this Shiny app uses a basic Shiny layout (no columns) and contains three of the widgets pictured in "basic-widgets.png". The other values of the select box are "Percent Black", "Percent Hispanic", and "Percent Asian".
+#' 
+#' Try this out yourself. Spend some time trying this out for yourself. If you get stuck and need a hint, the code I used to produce the second app is available in "model_answer_2.R".
+#' 
+#' To recap, It is easy to add fully functional widgets to your Shiny app.
+#' 
+#' - {shiny} provides a family of functions to create these widgets.
+#' - Each function requires a name and a label.
+#' - Some widgets need specific instructions to do their jobs.
+#' - You add widgets to your Shiny app just like you added other types of HTML content we learned about in the first two sections.
+#' 
+#' For more information, see:
+#' https://shiny.posit.co/r/gallery/widgets/widget-gallery/
+#' which provides templates that you can use to add widgets to your app.
+#' 
+#' 

@@ -4,3 +4,5 @@ In class materials for COMPFOR 133: Fundamentals of scientific computing in R, a
 Each class session is its own R project and activities are intended to be run from each class’s .Rmd file in the relevant project folder.
 
 Each .Rmd file has also been saved as an R script using knitr::purl(“filename.Rmd”). These script files should have basic functionality but not all R Markdown functions will work.
+
+The code I used to batch convert all .Rmd files is in ‘batch_R_script_coverter.R’

@@ -1,0 +1,579 @@
+#' 
+#' 12. Visualizing spatial data
+#' 
+#' # Packages
+#' 
+## ------------------------------------------------------------------
+
+library(tidyverse)
+library(maps)
+library(mapdata)
+library(plotly)
+
+
+#' 
+#' # Leveraging {ggplot} for mapping
+#' 
+#' Our old fried {ggplot2} contains a powerful function for mapping, `map_data()`. This function turns the points comprising the outline on a map into a data frame of those points. We can feed maps from various sources into `map_data()`, including from widely used mapping packages, such as {maps} or {mapdata}.
+#' 
+#' Here we pull in the USA map from {maps} and examine the resultant data frame:
+#' 
+## ------------------------------------------------------------------
+
+usa <- map_data("usa")
+str(usa)
+head(usa)
+
+
+#' 
+#' Here is the high-res world map from {mapdata}:
+#' 
+## ------------------------------------------------------------------
+    
+worldhr <- map_data("worldHires")
+str(worldhr)
+head(worldhr)
+
+
+#' 
+#' The high resolution data probably took a couple of seconds to load, that is the cost of high resolution data. The high resolution map of the world from {mapdata} contains over 2 million rows (see above). In contrast, the world map provided by {maps} is less than 100,000 rows:
+#' 
+## ------------------------------------------------------------------
+
+str(map_data("world"))
+
+
+#' 
+#' RAM issues?
+#' 
+## ------------------------------------------------------------------
+
+remove(worldhr)
+
+# will prompt a "garbage collection" report
+# free unused memory (Environment tab)
+
+
+#' 
+#' 
+#' The structure of those data frames is pretty self-explanatory. One important thing to note is 'group', which controls whether adjacent points should be connected (like we saw last time when we used a line segment to connect two points to make a barbell plot). Rows in the same group are connected, whereas those in different groups are not. This is crucial when plotting our data in {ggplot2}, as we'll see.
+#' 
+#' When data are read in using `map_data()` they can be readily plotted in {ggplot2} using `geom_polygon()`, which draws a line between each point and connects the last point back to the first point in the group. We map our x and y aesthetics to 'long' and 'lat', as we'd expect, and map the 'group' aesthetic to the 'group' column in our data frame.
+#' 
+#' 
+#' ## basic maps
+#' 
+#' By default, `geom_polygon()` draws with no line color, but with a black fill. Here we plot the usa data frame we read in above:
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = usa, aes(x = long, 
+                       y = lat, 
+                       group = group)) +
+  geom_polygon() + 
+  coord_fixed(1.3) # sets the aspect ratio
+
+
+#' 
+#' Note, if you try to plot the other data frame we read in, 'worldhr', be prepared to wait a while, and possibly for your R to crash. This is the result of {ggplot2}'s general slowness and the huge size of the 'worldhr' data set. As with most problems in R, there are ways around this.
+#' 
+#' ## color
+#' 
+#' We can change basic aesthetics. This version suppresses the fill color and draws the outline in blue. 
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = usa, aes(x = long, 
+                       y = lat, 
+                       group = group)) +
+  geom_polygon(fill = NA, color = "blue") + 
+  coord_fixed(1.3) 
+
+
+#' 
+#' Perhaps this looks ugly to you, as it does to me. Since we are using {ggplot2}, we can change the aesthetics as we have learned. Here I will set the theme to my personal preference in this context:
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = usa, aes(x = long, 
+                       y = lat, 
+                       group = group)) +
+  geom_polygon(fill = NA, color = "blue") + 
+  coord_fixed(1.3)  +
+  theme_linedraw()
+
+
+#' 
+#' This view provides a clear instance of the need to include 'group = group' inside our 'aes()' call. This is the same code, but omitting the grouping argument:
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = usa, aes(x = long, 
+                       y = lat)) +
+  geom_polygon(fill = NA, color = "blue") + 
+  coord_fixed(1.3)  +
+  theme_minimal()
+
+
+#' 
+#' You can see that the points are not connected correctly, extra, unnecessary lines have been drawn. 
+#' 
+#' Now we'll pull in the data to indicate the state boundaries. Would could use the "state" map provided in either {maps} or {mapdata}. Here we use the higher resolution one from {mapdata}, and then plot it. We add 'fill = region' to the 'aes()' call so the different states are filled with different colors.
+#' 
+## ------------------------------------------------------------------
+
+states <- map_data("state")
+ggplot(data = states, aes(x = long, 
+                          y = lat, 
+                          group = group)) + 
+  geom_polygon(aes(fill = region), 
+               color = "white") + # set border as white
+  coord_fixed(1.3) 
+
+
+#' 
+#' That worked fine, but the color legend dominates the plot, and also is not very useful as it is next to impossible to distinguish the 48 rainbow shades. If you didn't know roughly where they were, using the colors to find North Carolina vs North Dakota on the map would be challenging. So, we'll suppress the legend as we learned to do in {ggplot2}, and also change the theme.
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = states, aes(x = long,
+                          y = lat, 
+                          group = group)) + 
+  geom_polygon(aes(fill = region), 
+               color = "white") + 
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+
+#' 
+#' ## labeling regions
+#' 
+#' The map is better without the legend, but we'd still like to know what that state names are. We can do this using `geom_text()`, but we first need to know where to place the state names (the "region" labels). We'll do this in a fairly simple way by calculating the mean latitude and longitude of each state using our {tidyverse} wrangling skills, saving the list of locations to plot names as "centroids".
+#' 
+## ------------------------------------------------------------------
+
+centroids <- states %>%
+  group_by(region) %>%
+  summarize(c_long = mean(range(long)),
+            c_lat = mean(range(lat)))
+centroids
+
+
+#' 
+#' Now we tell {ggplot2} to add the labels using `geom_text()`.
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = states, aes(x = long, y = lat, 
+                          group = group)) + 
+  geom_polygon(aes(fill = region), 
+               color = "white") + 
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(legend.position = "none")  +
+  geom_text(data = centroids, aes(x = c_long,
+                                  y = c_lat, 
+                                  label = region),
+                   col = "white",
+                   size = 2.5, 
+                   inherit.aes = FALSE)
+
+
+#' 
+#' This isn't pretty; there are things we'd want to change for a real map to reduce overlaps, etc. But this gives you the general idea. The only slightly tricky thing here is that we have to add the argument 'inherit.aes = FALSE' to our `geom_text()` call, otherwise the grouping from the original plot aesthetics set in the first row creates problems, like this:
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = states, aes(x = long, y = lat, 
+                          group = group)) + 
+  geom_polygon(aes(fill = region), 
+               color = "white") + 
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(legend.position = "none")  +
+  geom_text(data = centroids, aes(x = c_long, y = c_lat, 
+                                  label = region),
+                   size = 3)
+
+
+#' 
+#' Sometimes in {ggplot2} global aesthetics can cause issues with specific geoms if there is a mismatch between what's defined globally and the columns available in a different data source used in those geoms. I have only run into this issue a couple of times, and 'inherit.aes = FALSE' has solved it both times (following, I admit, a long and frustrating round of troubleshooting!)
+#' 
+#' 
+#' ## selecting regions
+#' 
+#' As above, we can choose to plot a subset of regions. When we are using a data frame produced by `map_data()` the simplest way to do this is with the 'subset' command. To mirror the example above, we'll choose MI and OH.
+#' 
+## ------------------------------------------------------------------
+
+rivals <- subset(states, region %in% c("michigan", "ohio"))
+rivals
+
+
+#' 
+#' We can use {tidyverse} functions to check that the data frame contains just information on the two states we chose:
+#' 
+## ------------------------------------------------------------------
+
+rivals %>% 
+  group_by(region) %>% 
+  summarize(n())
+
+
+#' 
+#' Perfect. Now we can plot as above.
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = rivals, aes(x = long, y = lat, 
+                          group = group)) + 
+  geom_polygon(aes(fill = region), 
+               color = "white") + 
+  coord_fixed(1.3) +
+  theme_minimal()
+
+
+#' 
+#' We could make the additional edits we made above, removing the legend and labeling the map directly. We pull out just the locations for our two states from our 'centroids' data frame:
+#' 
+## ------------------------------------------------------------------
+
+centroids2 <- centroids %>% 
+  filter(region == c("michigan") | region == c("ohio"))
+
+
+#' 
+#' And substitute the new data frame 'centroids2' into our `geom_text()` function:
+#' 
+## ------------------------------------------------------------------
+
+ggplot(data = rivals, aes(x = long, y = lat, 
+                          group = group)) + 
+  geom_polygon(aes(fill = region), 
+               color = "white") + 
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_text(data = centroids2, aes(x = c_long, y = c_lat, 
+                                  label = region),
+                   size = 6, 
+                   inherit.aes = FALSE)
+
+
+#' 
+#' ## adding points & text
+#' 
+#' For completeness, we'll also make a map just of MI, labeling UM.
+#' 
+## ------------------------------------------------------------------
+
+MI <- subset(states, region %in% c("michigan"))
+MI
+
+ggplot(data = MI, aes(x = long, y = lat, 
+                          group = group)) + 
+  geom_polygon(fill = "blue") + 
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_point(aes(x = -83.73, y = 42.27), 
+             color = "yellow", size = 4) +  
+  geom_text(aes(x = -83.73, y = 42.27), 
+            label = "University\nof Michigan", 
+            hjust = "center", vjust = -0.5, colour = "yellow") 
+
+
+#' 
+#' Want to use the correct maize and blue colors? You can specify them by their hex codes: Maize: #FFCB05, Blue: #00274C 
+#' 
+## ------------------------------------------------------------------
+
+MI <- subset(states, region %in% c("michigan"))
+MI
+
+ggplot(data = MI, aes(x = long, y = lat, 
+                          group = group)) + 
+  geom_polygon(fill = "#00274C") + 
+  coord_fixed(1.3) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_point(aes(x = -83.73, y = 42.27), 
+             color = "#FFCB05", size = 4) +  
+  geom_text(aes(x = -83.70, y = 42.27), 
+            label = "University\nof Michigan", 
+            hjust = "center", vjust = -0.5, colour = "#FFCB05") 
+
+
+#' 
+#' 
+#' # Simple interactive maps with {plotly}
+#' 
+#' {plotly} also provides the capability to make simple interactive maps.
+#' 
+#' ## bubble maps
+#' 
+#' We'll start with a variant of the bubble chart we saw at the end of last class. Here is a US map:
+#' 
+## ------------------------------------------------------------------
+
+USA <- map_data("world") %>% 
+  filter(region == "USA")
+
+data <- world.cities %>% 
+  filter(country.etc == "USA")
+
+p <- ggplot() +
+  geom_polygon(data = USA, aes(x = long, 
+                               y = lat, 
+                               group = group), 
+               fill="grey", alpha = 0.3) +
+  geom_point( data=data, aes(x=long, y=lat), alpha = 0.6) +
+  theme_bw() + 
+  xlim(-130, -60) +  # to center the map on the relevant long coordinates  
+  ylim(25, 50)  +    # to center the map on the relevant lat coordinates
+  coord_fixed(1.3)
+
+ggplotly(p)
+
+
+#' 
+#' Now let's highlight the 10 largest cities.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot() +
+  geom_polygon(data = USA, aes(x = long, 
+                               y = lat, 
+                               group = group), 
+               fill="grey", alpha = 0.3) +
+  geom_point(data = data, aes(x = long, y = lat), alpha = 0.6) +
+  theme_bw() + 
+  xlim(-130, -60) +  # to center the map on the relevant long coordinates  
+  ylim(25, 50)  +    # to center the map on the relevant lat coordinates
+  coord_fixed(1.3) +
+  geom_text(data = data %>% 
+              arrange(pop) %>% 
+              tail(10), aes(x = long, y = lat, 
+                            label = name), size = 5) +
+  geom_point(data = data %>%
+               arrange(pop) %>% 
+               tail(10), aes(x = long, y = lat), 
+             color="red", size = 3) +
+  theme(legend.position="none")
+
+ggplotly(p)
+
+
+#' 
+#' This contains the relevant information, but it is hard to read. Below I have rearranged and modified a few elements. There are further modifications you might want to make to this, especially the label placement, but it is an improvement.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot() +
+  geom_polygon(data = USA, aes(x = long, 
+                               y = lat, 
+                               group = group), 
+               fill="grey", alpha = 0.25) +
+  geom_point(data = data, aes(x = long, y = lat), alpha = 0.15) +
+  theme_bw() + 
+  xlim(-130, -60) +  # to center the map on the relevant long coordinates  
+  ylim(25, 50)  +    # to center the map on the relevant lat coordinates
+  coord_fixed(1.3) +
+  geom_point(data = data %>%
+             arrange(pop) %>% 
+             tail(10), aes(x = long, y = lat), 
+             color = "red", size = 3, alpha = 0.7) +
+   geom_text(data = data %>% 
+              arrange(pop) %>% 
+              tail(10), aes(x = long, y = lat, 
+                            label = name),
+              color = "red", size = 3,
+              nudge_x  =-3, nudge_y = 1) +
+  theme(legend.position="none")
+
+ggplotly(p)
+
+
+#' 
+#' ## choropleth maps 
+#' 
+#' We can use {ggplot2} and `ggplotly()` to make simple interactive choropleth maps, too. Choropleths are maps where areas are colored in proportion to some variable of interest, such as vote counts or population density.
+#' 
+#' First, we make a simple interactive map of the us counties. The interactivity allows us to pan and zoom in on areas, which is helpful for states with very densely packed small counties, such as in the east.
+#' 
+## ------------------------------------------------------------------
+
+county_df <- map_data("county")
+state_df <- map_data("state")
+
+p <- ggplot(county_df, aes(long, lat, group = group)) +
+  geom_polygon(color = alpha("gray60", 0.5), fill = NA) +
+  geom_polygon(data = state_df, colour = "black", fill = NA) + 
+  theme_bw() +  
+  coord_fixed(1.3)
+
+ggplotly(p)
+
+
+#' 
+#' Now we'll pull in some data on votes counts from the 2012 US presidential election. The coding here might seem a bit complex, or at least very involved We'll walk through it.
+#' 
+#' First, we need to do some data wrangling. Some of the names in the subregion contain spaces, which can cause problems down the line. So we remove them using `gsub()`. The syntax is `gsub(pattern, replacement, x)`
+#' 
+## ------------------------------------------------------------------
+
+glimpse(county_df)
+# show table of counties (here, "subregions")
+table(county_df$subregion)
+
+# wrangle to remove spaces
+county_df$subregion <- gsub(" ", "", county_df$subregion)
+table(county_df$subregion)
+
+
+#' 
+#' Next, we pull in the voting dataset, and select just the data we want: vote proportions for the two candidates (Obama, Romney) and the country information.
+#' 
+## ------------------------------------------------------------------
+
+votes_df <- read.csv("votes.csv")
+glimpse(votes_df)
+
+votes_df <- votes_df  %>% 
+  select(Obama, Romney, area_name)
+glimpse(votes_df)
+
+
+#' 
+#' We want to add the data on vote counts to the dataset we used to produce the map. To do this, we need a column with identical values to join by. The county data in the map data set ('county_df$subregion') is in lower case and does not have the word "county"; the dataset with voting information is capitalized, and includes " County":
+#' 
+## ------------------------------------------------------------------
+
+glimpse(county_df)
+glimpse(votes_df)
+
+
+#' 
+#' So, we do some wrangling of the voting dataset:
+#' 
+## ------------------------------------------------------------------
+
+# make names lower case
+votes_df$area_name <- tolower(votes_df$area_name)
+glimpse(votes_df)
+
+# remove the "county" designation
+votes_df$area_name <- gsub(" county", "", votes_df$area_name)
+glimpse(votes_df)
+
+# look at values, see that there are spaces
+table(votes_df$area_name)
+
+# remove spaces in names
+votes_df$area_name <- gsub(" ", "", votes_df$area_name)
+table(votes_df$area_name)
+
+# look at both datasets
+glimpse(county_df)
+glimpse(votes_df)
+
+
+#' 
+#' It appears that the two datasets have county names that are in the same format now.
+#' 
+#' But... we are planning to do a join, and as we have talked about, it is easy to get into trouble with joins with larger datasets. When I first worked on this activity, I ran into problems for reasons it took me some time to figure out. 
+#' 
+#' Here is what happened. One of the two datasets contains periods in the county names, and the other doesn't (e.g., "st.clair" vs "stclair"). Here I will use a tidyverse tool called `str_detect()` to search for periods in the county column. A complication is  that "." is a special character in R, so we need to override that to treat "." like a normal character, which we do with "\\.". We will learn more about this later in the semester.
+#' 
+## ------------------------------------------------------------------
+
+votes_df %>%
+  filter(str_detect(area_name, "\\."))
+county_df %>%
+  filter(str_detect(subregion, "\\."))
+
+#check that there are relevant counties in county_df
+county_df %>%
+  filter(str_detect(subregion, "clair"))
+
+
+#' 
+#' So, we need to remove the period. As noted above, in the periods are special, and need to get the code to treat it as a regular character. Here we do this by designating it "[.]". More on this down the road.
+#' 
+## ------------------------------------------------------------------
+
+votes_df$area_name <- gsub("[.]", "", votes_df$area_name)
+
+#check it worked
+votes_df %>%
+  filter(str_detect(area_name, "\\."))
+
+
+#' 
+#' We have a few final bits of wrangling to do before producing the plot.
+#' 
+## ------------------------------------------------------------------
+
+# convert proportions to percentages
+votes_df$Obama
+votes_df$Obama <- votes_df$Obama*100
+votes_df$Obama
+votes_df$Romney <- votes_df$Romney*100
+
+head(votes_df)
+
+# make one of the values negative, to ease with plotting:
+for (i in 1:length(votes_df[, 1])) {
+  if (votes_df$Obama[i] > votes_df$Romney[i]) {
+    votes_df$Percent[i] = votes_df$Obama[i]
+  } else {
+    votes_df$Percent[i] = -votes_df$Romney[i]
+  }
+}
+head(votes_df)
+
+# change name of county in votes_df to "subregion" to match the map data column
+glimpse(votes_df)
+votes_df <- votes_df %>% 
+  rename("subregion" = "area_name")
+glimpse(votes_df)
+
+
+#' 
+#' We are now ready to join the datasets. Note that we remove expected warnings in the `left_join()` by setting the relationship as "many-to-many", and then remove duplicates in the county data.
+#' 
+## ------------------------------------------------------------------
+
+# join data
+US <- left_join(county_df, votes_df, by = "subregion",
+                relationship = "many-to-many")   
+# remove duplicates
+US <- US[!duplicated(US$order), ]
+glimpse(US)
+
+
+#' 
+#' We are now ready to plot. We'd like to set a color scale for the reds and blues. There are multiple ways to do this in R. Here we use `colorRampPalette()`, setting a three color scale for each color and telling R to divide it into 200 gradations. Note, the plot rendering takes some time. 
+#' 
+## ------------------------------------------------------------------
+
+# set color palettes
+blue <- colorRampPalette(c("lightskyblue","royalblue", "navy"))(200)                      
+red <- colorRampPalette(c("darkred", "red2", "mistyrose"))(200)
+
+#plot
+p <- ggplot(US, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = Percent),
+               color = alpha("white", 1/2), linewidth = 0.05)  +
+  geom_polygon(data = state_df, colour = "white", fill = NA) +
+  ggtitle("2012 US Election") +
+  scale_fill_gradientn(colours=c(red,"white", blue))  +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' Look at the resultant map. Knowing that the party indicated in blue, the Democrats, won this particular election (with roughly 51% to 47% percent of the vote), how do you square the fact that the map looks so much more red than blue? This highlights some of the dangers of choropleth maps.
+#' 

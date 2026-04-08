@@ -1,0 +1,845 @@
+#' 
+#' 08. Exploring and describing data
+#' 
+#' # load packages
+#' 
+#' Here we load the basic suite of {tidyverse} packages, along with some other useful packages you'll explore at the end of class.
+#' 
+## ------------------------------------------------------------------
+
+library(tidyverse)
+library(janitor)
+library(skimr)
+library(gtsummary)
+library(summarytools)
+library(DataExplorer)
+
+
+#' 
+#' # Describing data: 
+#' 
+#' We'll spend most of today working on a second key {tidyverse} package, {dplyr}. It is often described as a package to help wrangle data, but to my mind that is mostly the purview of {tidyr}, whereas {dplyr} is more often used for data description, summary, processing, and such (although {dplyr} and {tidyr} are often used together, which we did last time). These are the core {dplyr} functions:
+#' 
+#' `filter()`    - filter rows
+#' `select()`    - select, rename, and reorder columns
+#' `rename()`    - rename columns
+#' `arrange()`   - reorder rows
+#' `mutate()`    - create a new column
+#' `group_by()`  - group variables
+#' `summarize()` - summarize information within a data set
+#' 
+#' *Remember the cheat sheets available on Posit.cloud!*
+#' 
+#' For the many of the examples below, we’ll be using a data set that is loaded with the {tidyverse} package called 'msleep' (?msleep). It includes sleep times and weights from 83 different mammals. It has 11 variables.
+#' 
+## ------------------------------------------------------------------
+
+msleep
+
+
+#' 
+#' ## `filter()` rows
+#' 
+#' When working with a large data set, you’re often interested in only working with a portion of the data at any one time. To do this, you would want to filter your data set to only include rows you are interested in.  (for a "tidy" data set, this is a subset of the *observations*).
+#' 
+#' If you were only interested in the sleep times of Primates, we could filter the 'msleep' data set to include only data about those mammals that are also Primates. First, we look at the structure of our data:
+#' 
+## ------------------------------------------------------------------
+
+str(msleep)          # base R
+glimpse(msleep)      # tidyverse
+
+
+#' 
+#' and use `filter()` to include only data on primates
+#' 
+## ------------------------------------------------------------------
+
+msleep %>% 
+  filter(order == "Primates")
+
+
+#' 
+#' Note that we could do this without a pipe and get the same result:
+#' 
+## ------------------------------------------------------------------
+
+filter(msleep, order == "Primates")
+
+
+#' 
+#' We could further filter the data set. For example, here we use `filter()` to show primates that sleep more than 10 hours:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates", sleep_total > 10)
+
+
+#' 
+#' We'd get exactly the same result if we used the "&" logical operator:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10)
+
+
+#' 
+#' 
+#' ### your turn
+#' 
+#' Q. Filter the 'msleep' data set to include only carnivores (using the 'vore' variable) with body weights greater than or equal to 100 kg:
+#' 
+#' 
+## ------------------------------------------------------------------
+
+
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A.
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10)
+
+msleep %>%
+  filter(vore == "carni", bodywt >= 100)
+
+# OR
+
+myobj <- msleep %>%
+  filter(vore == "carni" & bodywt >= 100)
+
+
+
+#' 
+#' 
+#' ## `select()` columns
+#' 
+#' If you want to choose a subset of your data set's columns, rather than choose particular rows, we use `select()`. Note, for a "tidy" data set, this is a subset of the *variables*.
+#' 
+#' Let’s start with the code above to only include primates who sleep > 10 hours:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10)
+
+
+#' 
+#' and imagine we only want to include the first column (the name of the mammal) and the sleep information (included in the columns 'sleep_total', 'sleep_rem', and 'sleep_cycle'). We would do this by adding another pipe, and using the function `select()` to choose only these columns:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle)
+
+
+#' 
+#' Note: we could do this without using our pipe operator `%>%`, but the code is harder to read:
+#' 
+## ------------------------------------------------------------------
+
+select(filter(msleep, order == "Primates", sleep_total > 10), name, sleep_total, sleep_rem, sleep_cycle)
+
+
+
+#' 
+#' 
+#' Also note: we can select these columns based on their number:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(1, 6:8)
+
+
+#' 
+#' Also note: we can select *everything but* (i.e., exclude) specified columns, too:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+    select(-c(sleep_rem, sleep_cycle))
+
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+    select(-c(6:11)) %>% 
+    select(1:3)
+
+
+#' 
+#' 
+#' ### your turn
+#' 
+#' Q. Start with the 'msleep' data set and choose only rows for carnivores (using the 'vore' variable), then show only the columns name, genus, order, and bodywt
+#' 
+## ------------------------------------------------------------------
+
+
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(vore == "carni") %>% 
+  select(name, genus, order, bodywt)
+
+# OR
+
+msleep %>%
+  filter(vore == "carni") %>% 
+  select(1, 2, 4, 11)
+
+
+#' 
+#' So, we use `filter()` to choose rows, `select()` to choose columns. How do you keep these straight? I use a simple memory trick: `filter()` has an "r", so we use it to choose Rows; `select()` has a "c", so we use it to choose Columns. 
+#' 
+#' 
+#' ## renaming columns while using `select()`
+#' 
+#' `select()` can also be used to rename columns. The syntax is: `new_column_name = old_column_name` within `select()`. For example:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, total = sleep_total, rem = sleep_rem, cycle = sleep_cycle)
+
+# this is nicer to look at:
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, 
+         total = sleep_total, 
+         another = sleep_rem, 
+         cycle = sleep_cycle)
+
+# this also works
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(1, total = 6, rem = 7, cycle = 8)
+
+
+#' 
+#' ## `rename()`
+#' 
+#' When using `select()` to rename columns, only the specified columns will be included and renamed in the output. If we, instead, want to change the names of a column(s) but return all columns in your output, we use `rename()`. For example, the following, returns a data frame with all 11 columns, where the column names for three columns specified within `rename()` function have been renamed.
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates", sleep_total > 10) %>%
+  rename(total = sleep_total, 
+         rem = sleep_rem, 
+         cycle = sleep_cycle)
+
+
+#' 
+#' ## re-ordering data
+#' 
+#' ### columns using `select()`
+#' 
+#' `select()` can change the order in which the columns are returned. Simply list them in the order you want.
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle)
+
+# compare with:
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(sleep_cycle, sleep_total, sleep_rem, sleep_cycle, name)
+
+
+#' 
+#' 
+#' ### rows with `arrange()`
+#' 
+#' Rows can also be reordered, using `arrange()`, which by default lists observations in ascending order (from smallest to largest) based on the value of a particular variable. Continuing on from our example above, to now sort our rows by the amount of total sleep each mammal gets, we would use the following syntax:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle) %>% 
+  arrange(sleep_total)
+
+
+#' 
+#' This works on character variables, too. Which are ordered alphabetically from A-Z:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle) %>% 
+  arrange(name)
+
+
+#' 
+#' Either of these can be sorted in descending order by using `arrange(desc())`:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle) %>% 
+  arrange(desc(sleep_total))
+
+# substituting "-" for "desc" also works:
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle) %>% 
+  arrange(-(sleep_total))
+
+
+#' 
+#' This works on character variables, too. Which are ordered alphabetically from Z-A:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, sleep_rem, sleep_cycle) %>% 
+  arrange(desc(name))
+
+
+#' 
+#' We can also sort things based on multiple criteria, they are sorted in the order we list:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, bodywt) %>% 
+  arrange(bodywt, name)
+
+# cf
+
+msleep %>%
+  filter(order == "Primates" & sleep_total > 10) %>% 
+  select(name, sleep_total, bodywt) %>% 
+  arrange(name, bodywt)
+
+
+#' 
+#' ### your turn
+#' 
+#' A. Q. Start with the 'msleep' data set and choose only rows for carnivores (using the 'vore' variable), show only the columns name, genus, order, and bodywt, and sort these by order and then body weight
+#' 
+## ------------------------------------------------------------------
+
+
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A.
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  filter(vore == "carni") %>% 
+  select(name, genus, order, bodywt) %>% 
+  arrange(order, bodywt)
+
+
+#' 
+#' 
+#' ## `mutate()` to create new columns
+#' 
+#' Often, we want to create new columns. This is the job of `mutate()`. For example, we could convert the 'sleep_total' from its original hours to seconds by multiplying by 60. 
+#' 
+## ------------------------------------------------------------------
+
+msleep %>% 
+  mutate(sleep_sec = sleep_total * 60)
+
+
+#' 
+#' We can select just a few columns to make it easier to see that it worked:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>% 
+  mutate(sleep_sec = sleep_total * 60) %>% 
+  select(name, sleep_sec)
+
+
+#' 
+#' Note that we created the new column in the second row, and can immediately use it in the next row (or any subsequent row)
+#' 
+#' 
+#' ## grouping data
+#' 
+#' Often we want to describe our data by describing different subsets of the data. To do this, we group our data using `group_by()`. On its own, it isn't that useful:
+#' 
+## ------------------------------------------------------------------
+
+msleep
+
+msleep %>% 
+  group_by(order)
+
+
+#' 
+#' Here, all that `group_by()` has done has added information on the number of groups at the top of the tibble. But it is incredibly useful when paired with our next function.
+#' 
+#' 
+#' ## summarizing data with `summarize()`
+#' 
+#' `summarize()` calculates summary statistics of the data piped to it. Here we use it to count how many rows in our data set:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  summarize(N = n())
+
+
+#' 
+#' This simple result could also be obtained by typing `nrow()`:
+#' 
+## ------------------------------------------------------------------
+
+nrow(msleep)
+
+
+#' 
+#' Typically, though, we combine `summarize()` with `group_by()` to calculate things for different subsets of the data. For example, we could calculate the number of observations in each order using `n()`:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  group_by(order) %>% 
+  summarize(N = n())
+
+msleep %>%
+  group_by(order) %>% 
+  summarize(count = n())
+
+
+#' 
+#' There are other ways in which the data can be summarized using `summarize()`, such as `mean()`, `median()`, `min()`, and `max()`.
+#' 
+#' For example, we could calculate the average (mean) total sleep each order of mammal got:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  group_by(order) %>% 
+  summarize(N = n(), 
+            mean_sleep = mean(sleep_total),
+            max = max(sleep_total))
+
+
+#' 
+#' 
+#' ### your turn
+#' 
+#' Q. For each dietary group ('vore') list the number of samples, and the minimum and the maximum value for the variable 'bodywt'
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A. 
+## ------------------------------------------------------------------
+
+msleep %>%
+  group_by(vore) %>% 
+  summarize(N = n(), 
+            min_size = min(bodywt),
+            max_size = max(bodywt))
+
+
+#' 
+#' Let's imagine that instead of two columns for min and max, we want a single column called range that lists the range of body weights separated by a dash. We can use a the `unite()` function we saw last time:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  group_by(vore) %>% 
+  summarize(N = n(), 
+            min_size = min(bodywt),
+            max_size = max(bodywt)) %>% 
+  unite(range, min_size, max_size, sep = "-")
+
+
+#' 
+#' 
+#' There are other functions in {dplyr} that more or less replicate things we've seen above, including `tally()` and `count()`. You can explore them on your own, if you like.
+#' 
+#' Note: you can `group_by()` multiple things at once:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  group_by(vore, order) %>% 
+  summarize(N = n(), 
+            min_size = min(bodywt),
+            max_size = max(bodywt)) %>% 
+  print(n = Inf)
+
+
+#' 
+#' When we `group_by()` multiple variables, the order matters:
+#' 
+## ------------------------------------------------------------------
+
+msleep %>%
+  group_by(vore, order) %>% 
+  summarize(N = n())%>% 
+  print(n = Inf)
+
+msleep %>%
+  group_by(order, vore) %>% 
+  summarize(N = n())%>% 
+  print(n = Inf)
+
+
+#' 
+#' ## identifying duplicates with `get_dupes()`
+#' 
+#' The `get_dupes()` function is very helpful to identify duplicate entries. You specify how you define duplicates during data wrangling, you’ll use this function and specify which columns you’re looking for duplicates in.
+#' 
+## ------------------------------------------------------------------
+
+msleep %>% 
+  get_dupes(genus, vore)
+
+
+#' 
+#' if you don't specify, it looks for perfect duplicates
+#' 
+## ------------------------------------------------------------------
+
+msleep %>% 
+  get_dupes()
+
+
+#' 
+#' Let's test that this works. We choose a subset of rows in the data set (the primates), save this as a new data set, then add the two data sets together using `bind_rows()` and search again for dupes:
+#' 
+## ------------------------------------------------------------------
+
+primates <- msleep %>%
+  filter(order == "Primates")
+primates
+
+new_data <- bind_rows(msleep, primates)
+new_data
+
+new_data %>% 
+    get_dupes()
+
+
+#' 
+#' Today's problem set gives you the opportunity to practice using {dplyr} functions, and the skill booster guides you through an exploration of joins.
+#' 
+#' Before working on these, I encourage you to work through the code below, which introduces some useful tools for exploring data.
+#' 
+#' 
+#' 
+#' # Exploring data
+#' 
+#' A core part, perhaps *the* core part, of data exploration is data visualization. We'll be doing almost all of our visualizations in {ggplot2}, which we'll learn about next time. So for today we'll focus on exploring data in non-visual forms (save some simple visualizations produced in simple summaries).
+#' 
+#' There are many packages available to do basic data exploration in R. We will focus on a small number that to my mind strike a good balance between simplicity (beginner friendliness) and power, and that integrate well with other {tidyverse} packages we have or will encounter.
+#' 
+#' For an overview of some of the major ones (including several we won't talk about), I suggest Michael Clark's posting:
+#' 
+#' https://m-clark.github.io/exploratory-data-analysis-tools/
+#' 
+#' Two other references I have already recommended are also very useful:
+#' 
+#' 1. Hadley Wickham et al.'s R for Data Science (https://r4ds.hadley.nz/eda)
+#' 
+#' 2. Wright et al.'s Tidyverse Skills for Data Science
+#' (https://jhudatascience.org/tidyversecourse/wrangle-data.html)
+#' 
+#' ## simple base R tools
+#' 
+#' We already know how to do some basic summary and exploration:
+#' 
+## ------------------------------------------------------------------
+
+dim(msleep)
+str(msleep)
+
+
+#' 
+#' Here are two other simple and useful base R tools:
+#' 
+## ------------------------------------------------------------------
+
+summary(msleep)
+table(msleep$order)
+
+
+#' 
+#' 
+#' ## glimpse()
+#' 
+#' As we saw above, the {tidyverse} has a similar function to `str()`, `glimpse()`:
+#' 
+## ------------------------------------------------------------------
+
+glimpse(msleep)
+
+
+#' 
+#' ## tabyl()
+#' 
+#' The `tabyl()` function from {janitor} package can be incredibly helpful for summarizing categorical variables quickly and discerning the output at a glance. It is similar to the `table()` function from base R, but is explicit about missing data, rather than ignoring missing values by default.
+#' 
+## ------------------------------------------------------------------
+
+msleep %>% 
+  tabyl(order)
+
+# base R's `table()` ignores NAs
+table(msleep$vore)
+unique(msleep$vore)
+
+# but the tidyverse's `tabyl()` shows them:
+msleep %>% 
+  tabyl(vore)
+
+
+#' 
+#' 
+#' ## skim()
+#' 
+#' The output from `skim()` breaks the data up by variable type. For example, the 'msleep' data set is broken up into character and numeric variable types. The data are then summarized in a meaningful way for each. This function provides a lot of information about the entire data set. 
+#' 
+## ------------------------------------------------------------------
+
+skim(msleep)
+
+
+#' 
+#' Note, we can use `skim()` and other tools inside a more complex description pipeline; we'll see that below.
+#' 
+#' 
+#' ## view()
+#' 
+#' There's also `view()` that opens your data set in an *editable* spreadsheet-style window, but tread carefully here - any changes you make will not be documented in your script, affecting reproducibility. Note that I had to use `tibble::view()` because the `view()` function in {tibble} (which is part of the {tidyverse}) is "masked" by the package {summarytools} that we called afterwards.
+#' 
+## ------------------------------------------------------------------
+
+view(msleep) # produces an error
+tibble::view(msleep)
+
+
+#' 
+#' 
+#' ## DataExplorer
+#' 
+#' {DataExplorer} package provides some useful functionality. It can provide an overview with `introduce()` and create an *.html report with lots of descriptive information using `create_report()`. Most of this report is visual, and much of it not all that useful for us at present. Still, it is a powerful little package for simple exploration. The report appears as a file in your working directory.
+#' 
+## ------------------------------------------------------------------
+
+introduce(msleep)
+create_report(msleep)
+
+
+#' 
+#' ## gtsummary
+#' 
+#' {gtsummary} is a powerful tool that plays well with {tidyverse} packages to produce useful summaries (that appear in the 'Viewer' pane).
+#' 
+## ------------------------------------------------------------------
+
+tbl_summary(msleep)
+
+# this does the same:
+
+msleep %>% 
+  tbl_summary()
+
+# by subgroup
+msleep %>% 
+  tbl_summary(by = vore)
+
+
+#' 
+#' ## summarytools
+#' 
+#' {summarytools} is a package that is pretty new to me, but seems great. I have not done extensive exploration of it, but the simple functions are intuitive and seem very helpful:
+#' 
+## ------------------------------------------------------------------
+
+descr(msleep)
+
+dfSummary(msleep)
+
+msleep %>% 
+  group_by(vore) %>% 
+  dfSummary()
+
+
+#' 
+#' There is a useful vignette about {summarytools} available here, if you wish to explore it more:
+#' 
+#' https://cran.r-project.org/web/packages/summarytools/vignettes/introduction.html
+#' 
+#' 

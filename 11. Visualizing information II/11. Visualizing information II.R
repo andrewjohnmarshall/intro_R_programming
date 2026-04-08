@@ -1,0 +1,348 @@
+#' 
+#' 11. Visualizing information II
+#' 
+#' # Packages
+#' 
+## ------------------------------------------------------------------
+
+library(tidyverse)
+library(plotly)
+library(ggiraph)
+library(patchwork)
+library(gapminder)
+library(hexbin)
+library(maps)
+library(mapproj)
+library(viridis)
+
+
+#' 
+#' # Making interactive visualizations
+#' 
+#' The tools we'll use today are provided by a package called {plotly}. Plotly (https://plot.ly/) is both a commercial service and an open source product for creating high end interactive visualizations. The {plotly} package allows you to create interactive graphs in two ways. The first is using core {plotly} functions (e.g., `plot_ly()`) to make interactive graphs directly. The second is to use the {plotly} function `ggplotly()` to turn {ggplot2} objects into interactive graphics. As I mentioned in the introduction, we'll be using the second option, `ggplotly()` to turn {ggplot2} objects into interactive graphics, both because it builds on knowledge you have already gained and because it simplifies some of the logistics for us.
+#' 
+#' There are several good sources of information about {plotly}. See the {plotly} R pages (https://plot.ly/r/) and the book "Interactive web-based data visualization with R, Plotly, and Shiny" (Sievert 2020). 
+#' 
+#' Today we'll learn to make several types of interactive visualizations with {plotly}.
+#' 
+#' 
+#' # Scatterplots
+#' 
+#' First, we'll create a static graph using the mpg data that comes with {ggplot2}. Most of this should be familiar to you:
+#' 
+## ------------------------------------------------------------------
+
+ggplot(mpg, aes(x = displ, y = hwy, 
+                color = class)) +
+  geom_point(size = 3, alpha = 0.5) +
+  labs(x = "Engine displacement",
+       y = "Highway Mileage",
+       color = "Car class") +
+  theme_minimal()
+
+
+#' 
+#' The one new thing is that we have added a new argument to 'labs', which sets the header in the legend.
+#' 
+#' {plotly} allows us to quickly turn this static visualization to an interactive one. We simple save the {ggplot2} as an object (here, called "p"), and then render it using `ggplotly(p)`.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(mpg, aes(x = displ, y = hwy, 
+                color = class)) +
+  geom_point(size = 3, alpha = 0.5) +
+  labs(x = "Engine displacement",
+       y = "Highway Mileage",
+       color = "Car Class") +
+  theme_minimal()
+
+ggplotly(p)
+
+
+#' 
+#' The resultant plot will appear in the "Viewer" window, not the "Plots" window. It looks very similar to the static one, but there are now added interactive elements. Hovering the cursor over a point displays information about that point. Clicking on a legend point removes that class from the plot. Clicking on it again returns it. Double clicking on it removes all other points. Tools on the upper right of the plot allow you to zoom in and out of the image, pan, select, reset axes, and download the image as a png file.
+#' 
+#' As we have learned, we can use `geom_smooth()` to add lines to the plot:
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(mpg, aes(x = displ, 
+                     y = hwy, 
+                     color = class)) +   # color differentiation
+                                         # applies to full plot
+  geom_point(size = 3, alpha = 0.5) + 
+  geom_smooth() +
+  labs(x = "Engine displacement",
+       y = "Highway Mileage",
+       color = "Car Class") +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' This has added a separate smoother for each car class. In some contexts, this is quite useful. But here it is just messy. If we want the 'color = class' to apply to the points only, and not the whole plot, we move it from the initial plot call `ggplot(mpg, aes(x = displ, y = hwy, color = class))` to the call adding points `geom_point(aes(color = class), alpha = 0.5, size = 3)`. This is better:
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(mpg, aes(x = displ, 
+                     y = hwy)) +
+  geom_point(aes(color = class), 
+             alpha = 0.5, size =3) +  # color differentiation
+                                      # applies to points only
+  geom_smooth() +
+  labs(x = "Engine displacement",
+       y = "Highway Mileage",
+       color = "Car Class")  +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' # Customizing tooltips
+#' 
+#' By default, the mouse over provides pop-up information, known as a "tooltip", that displays the values used to create the plot ('displ', 'hwy', and 'class' here). However you can customize the tooltip. This involves adding a 'labeln = variablen' to the 'aes()' inside the {ggplot2} call and also to the `ggplotly()` function.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(mpg, aes(x = displ, 
+                     y = hwy, 
+                     color = class,
+                     label1 = manufacturer,
+                     label2 = model,
+                     label3 = year)) +
+  geom_point(size = 3, alpha = 0.5) +
+  labs(x = "Engine displacement",
+       y = "Highway Mileage",
+       color = "Car Class") +
+  theme_bw()
+
+ggplotly(p, tooltip = c("label1", "label2", "label3"))
+
+
+#' 
+#' The tooltip now displays the car manufacturer, make, and year.
+#' 
+#' You can fully customize the tooltip by creating your own label and including it as a variable in the data frame Using `mutate()`. Then place the label in the {ggplot2} as text and in the `ggplotly()` function as a label.
+#' 
+## ------------------------------------------------------------------
+
+mpg <- mpg %>%
+  mutate(mylabel = paste("This is a", manufacturer, model, "\n",
+                         "released in", year, "."))
+
+p <- ggplot(mpg, aes(x = displ, 
+                     y = hwy, 
+                     color = class,
+                     text = mylabel)) +
+  geom_point(size = 3, alpha = 0.5) +
+  labs(x = "Engine displacement",
+       y = "Highway Mileage",
+       color = "Car Class") +
+  theme_bw()
+
+ggplotly(p, tooltip = c("mylabel"))
+
+
+#' 
+#' # Hexbins
+#' 
+#' Hexagonal binning (i.e., `geom_hex()`) allows us to visualize a two-dimensional density. For scatterplots with lots of points, in imposes hexagonal bins on the plot and then colors the hexagons based on how many points fall inside it. Here is a very busy scatterplot made using  the built in diamonds data set. Because the diamonds dataset is large, we take a random dample of 1000 observations so we don't need to wait too long for the plot to draw.
+#' 
+## ------------------------------------------------------------------
+
+# Randomly sample 1000 rows
+set.seed(133)
+diamonds_subset <- diamonds %>% sample_n(10000)
+
+p <- ggplot(diamonds_subset, aes(x = log(carat), y = log(price))) + 
+  geom_point(alpha = 0.25) +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' Dividing the values into hexagonal bins makes the plot easier to digest.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(diamonds_subset, aes(x = log(carat), y = log(price))) + 
+  geom_hex(bins = 100) +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' We can see there is a strong positive linear relationship between the log of carat and price. It also shows that for many, the carat is only rounded to a particular number (indicated by the light blue bands where many values are clustered together) and no diamonds are priced around $1500 (the white horizontal stripe at 7.3 (which is log(1500)). Making this plot interactive makes it easier to decode the hexagonal colors into the counts that they represent.
+#' 
+#' We can change the bin size if we like:
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(diamonds_subset, aes(x = log(carat), y = log(price))) + 
+  geom_hex(bins = 50) + # change bin size
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' This makes the plot easier to digest in some ways, but note we have now lost the white horizontal band. 
+#' 
+#' # Frequency polygons
+#' 
+#' We can leverage {ggplot2}s consistent interface for exploring statistical summaries across groups. For example, by including a discrete color variable (e.g., clarity) with `geom_freqpoly()`, we get a frequency polygon for each level of that variable.
+#' 
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(diamonds_subset, aes(x = log(price), color = clarity)) + 
+    geom_histogram() +
+    theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' This works for basically any geom (e.g. `geom_histogram()`, `geom_density()`).
+#' 
+#' # Faceting
+#' 
+#' Now, to see how price varies with both cut and clarity, we could repeat this same visualization for each level of cut using one of {ggplot2}'s super powers, `facet_wrap()`. Here, to facilitate comparisons, we can have `geom_freqpoly()` display relative rather than absolute frequencies. By making this plot interactive, we can more easily compare particular levels of cut by leveraging the legend filtering capabilities.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(diamonds_subset, aes(x = log(price), color = clarity)) + 
+    geom_freqpoly(stat = "density") + 
+    facet_wrap(~cut)
+
+ggplotly(p)
+
+
+#' 
+#' # Dumbbell plots
+#' 
+#' Dumbbell plots are simple, impactful ways of making comparisons between two states across individuals. We can make them simply by combining {ggplot2}s `geom_line()` and `geom_point()` functions.
+#' 
+#' Here will use the {gapminder} package's data on life expectancy, GDP per capita, and population by country to make dumbbell plot to compare life expectancy change from 1952 to 2007 for all Asian countries. We make dumbbell plot by plotting points for each time point and connect them with a line for each country. In order to connect the points, we need specify which rows or countries need to be connected. We create a new variable that specifies the group corresponding to each country.
+#' 
+## ------------------------------------------------------------------
+
+gapminder <- read_csv("gapminder-FiveYearData.csv")
+
+df <- gapminder %>%
+  filter(year %in% c(1952,2007)) %>%
+  filter(continent == "Asia") 
+
+df <- df %>%
+  mutate(paired = rep(1:(n()/2), each = 2),
+         year = factor(year))
+
+p <- df %>% 
+  ggplot(aes(x = lifeExp, y = country)) +
+  geom_line(aes(group = paired))+
+  geom_point(aes(color = year)) +
+  theme(legend.position = "top") +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' As is usually the case, alphabetical order is not so helpful for a plot. We can reorder the dumbbell plot by life expectancy values using `reorder()` to convey additional information.
+#' 
+## ------------------------------------------------------------------
+
+p <- df %>% 
+  ggplot(aes(x = lifeExp, y = reorder(country, lifeExp))) +
+  geom_line(aes(group = paired)) +
+  geom_point(aes(color = year)) +
+  labs(y = "country") +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' Changing the color of the line between the points and making them slightly larger improves the efficacy of the visualization.
+#' 
+## ------------------------------------------------------------------
+
+p <- df %>% 
+  group_by(paired) %>%
+  ggplot(aes(x = lifeExp, y = reorder(country, lifeExp))) +
+  geom_line(aes(group = paired), color = "grey")+
+    geom_point(aes(color = year), size = 2) +
+  labs(y = "country") +
+  theme_bw()
+
+ggplotly(p)
+
+
+
+#' 
+#' # Bubble charts
+#' 
+#' When plotting points are used to encode additional information the resultant plots are often called bubble charts. Here we use the {gapminder} data again to plot life expectancy as a function of per capita GDP, and set the point size to reflect population size.
+#' 
+## ------------------------------------------------------------------
+
+data <- gapminder %>% 
+  filter(year=="2007") %>% 
+  dplyr::select(-year)
+
+p <- ggplot(data, aes(x = gdpPercap, 
+                      y = lifeExp,
+                      size = pop)) +
+              geom_point(alpha = 0.5) +
+  theme_bw()
+
+ggplotly(p)
+
+
+#' 
+#' We can modify the range of sizes of the points by using `scale_size()`. Try a few different values to see how it alters the output.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(data, aes(x = gdpPercap, 
+                      y = lifeExp,
+                      size = pop)) +
+              geom_point(alpha = 0.5) +
+  theme_bw() +
+      scale_size(range = c(0.5, 20))
+
+ggplotly(p)
+
+
+#' 
+#' We can make other changes using {ggplot2} functions we already know. For example, here we set the colors to differ by continent.
+#' 
+## ------------------------------------------------------------------
+
+p <- ggplot(data, aes(x = gdpPercap, 
+                      y = lifeExp,
+                      size = pop,
+                      color = continent)) +
+              geom_point(alpha = 0.5) +
+  theme_bw() +
+      scale_size(range = c(0.5, 20))
+
+ggplotly(p)
+
+
+#' 
+#' 
+#' # Other tools
+#' 
+#' While {plotly} is the most popular approach for turning static {ggplot2} graphs into interactive plots, many other approaches exist, including {ggiraph}, {rbokeh}, {rcharts}, and {highcharter}. Here are links to each to give you a sense of their capabilities.
+#' 
+#' - https://davidgohel.github.io/ggiraph/
+#' - https://hafen.github.io/rbokeh/articles/rbokeh.html
+#' - https://ramnathv.github.io/rCharts/
+#' - https://jkunst.com/highcharter/
+#' 
+#' 

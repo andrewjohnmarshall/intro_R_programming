@@ -1,0 +1,672 @@
+#' 
+#' 07. Wrangling data
+#' 
+#' # defining tidy data
+#' 
+#' ## data structure
+#' 
+#' Most data sets are data frames made up of rows and columns. The columns are almost always labeled and the rows are often labeled. There are many ways to structure the same underlying data.
+#' 
+## ------------------------------------------------------------------
+
+preg <- read.csv("preg.csv")
+preg
+
+preg2 <- read.csv("preg2.csv")
+preg2
+
+
+#' 
+#' The data are the same, but the layout is different. Our vocabulary of rows and columns is  not rich enough to describe why the two tables represent the same data. In addition to appearance, we need a way to describe the underlying semantics, or meaning, of the values displayed in the table.
+#' 
+#' Note: the above two data sets displayed in the normal format we are used to in base R. Since we are using the tidyverse, for consistency we will work with these as tibbles. We can achieve this in (at least) two ways.
+#' 
+#' First, we could import the data sets directly as tibbles, using `as_tibble()`:
+#' 
+## ------------------------------------------------------------------
+
+library(tidyverse)
+preg <- as_tibble(read.csv("preg.csv"))
+preg
+
+
+#' 
+#' Alternatively, we could reclassify the data frames as tibbles once we have imported them.
+#' 
+## ------------------------------------------------------------------
+
+preg2 <- read.csv("preg2.csv")
+preg2 # not a tibble
+
+preg2 <- as_tibble(preg2)
+preg2 # now a tibble
+
+
+#' 
+#' ## data semantics
+#' 
+#' A dataset is a collection of values, usually either numbers (if quantitative) or strings (if qualitative). Values are organised in two ways. Every value belongs to a **variable** and an **observation**.
+#' 
+#' A tidy version of the pregnancy data looks like this (the comments indicate what each line does, we'll discuss the meaning of the code more below):
+#' 
+## ------------------------------------------------------------------
+
+preg3 <- preg %>%
+     # pivot_longer() reshapes the data from wide to long,
+     # it is moving 'treatmenta' and 'treatmentb' into
+     # a single column (named "treatment")
+     # and their values into the "n" column
+    pivot_longer(cols = treatmenta:treatmentb,
+                 names_to = "treatment",
+                 values_to = "n") %>%
+     # mutate() function with the str_remove() function
+     # removes the word "treatment" from the 'treatment column cells
+       # (actually, this is using mutate() to create a new variable
+       # based on the original 'treatment' column in which
+       # the text string "treatment" is removed - but because the
+       # new column 'treatment' has the same name as the original column,
+       # it simply overwrites it. If we had called it a different name,
+       # it would have appended the new column to the end of the dataset
+       # and kept the original one, too.)
+    mutate(treatment = str_remove(treatment, "treatment")) %>%
+     # arrange() orders the data by name and then treatment
+    arrange(name, treatment)
+preg3
+
+
+#' 
+#' Values, variables and observations are now more clear. The data set contains 18 values representing three variables and six observations. The variables are:
+#' 
+#' 1. `name`, with three possible values (John, Mary, and Jane).
+#' 2. `treatment`, with two possible values (a and b).
+#' 3. `n`, with five or six values depending on how you think of the missing value, NA
+#' 
+#' The experimental design tells us more about the structure of the observations. In this experiment, every combination of `name` and `treatment` was to be measured, a completely crossed design. The experimental design also determines whether or not missing values can be safely dropped. Here, the missing value represents an observation that should have been made, but wasn't, so it's important to keep it. Structural missing values, which represent measurements that can't be made can be safely removed (more on this later).
+#' 
+#' ## tidy data structure
+#' 
+#' 1.  Each variable forms a column.
+#' 2.  Each observation forms a row.
+#' 3.  Each value has a cell
+#' 
+#' Here is a second example. The same data are organised in four different ways. Each dataset shows the same values of four variables *country*, *year*, *population*, and *cases*:
+#' 
+## ------------------------------------------------------------------
+
+table1
+table2
+table3
+
+
+#' 
+#' Here the information is spread across two tibbles
+#' 
+## ------------------------------------------------------------------
+
+table4a  # cases
+table4b  # population
+
+
+#' 
+#' All are representations of the same underlying data, but not equally easy to use. In this example, only `table1` is tidy. It's the only representation where each column is a variable.
+#' 
+#' {dplyr}, {ggplot2}, and all other the packages in the {tidyverse} are designed to work with tidy data.
+#' 
+#' # Tidying messy datasets
+#' 
+#' Unfortunately, most real datasets violate the precepts of tidy data. While occasionally you do get a dataset that you can start analyzing immediately, this is the exception, not the rule. Tidying required for most real analyses. Sometimes it can take as long as the analysis itself, or longer!
+#' 
+#' The first step is always to figure out what the variables and observations are.
+#' 
+#' The second step is often to resolve one of two common problems:
+#' 1. Column names are not names of variables, but values of a variable.
+#' 2. One observation might be scattered across multiple rows.
+#' 
+#' {tidyr} can fix these problems, with `pivot_longer()` and `pivot_wider()`.
+#' 
+#' ## pivot_longer()
+#' 
+#' A common problem is a dataset where some of the column names are not names of variables, but values of a variable. e.g.,:
+#' 
+## ------------------------------------------------------------------
+
+table4a
+
+
+#' 
+#' The column names `1991` and `2000` represent values of the `year` variable, and each row represents two observations, not one.
+#' 
+#' To tidy a data set like this, we need to create a new variable (column) called `year` and place the data values in a column that indicates what the data actually are. Here, they are numbers of cases, so we will call the new column `cases`. This process will make the data set longer, thus the intuitively-named `pivot_longer()`:
+#' 
+## ------------------------------------------------------------------
+
+table4a %>%
+    pivot_longer(cols = c("1999", "2000"),
+                 names_to = "year",
+                 values_to = "cases")
+
+
+#' 
+#' (The old columns -the old data structure- are lost, but the information is still saved.) How does this code work?
+#' 
+#' We want our new dataset to have three columns: `country`, `year`, and `cases`. Only the first of these are columns in the initial dataset. To tidy these data, we need to figure out what are the variables and what are the values in the dataset. `table4a` contains data on the number of cases (of tuberculosis, incidentally) per year in each of three countries. The values, in other words the data in the table cells, are numbers of cases. These values are measured in each country in each year, therefore `year` should be a single column, too. The code above takes the original table (`table4a`), chooses the columns to be tidied up (`1999`, `2000`), sets the new variable (column) that will hold the data from the initially-selected columns (`year`), and then names the column that the values should be stored in (`cases`). Note that we can label the new columns anything we want:
+#' 
+## ------------------------------------------------------------------
+
+
+table4a %>%
+    pivot_longer(cols = c("1999", "2000"),
+                 names_to = "annum",
+                 values_to = "n_tb_cases")
+
+
+#' 
+#' ### your turn
+#' 
+#' 
+#' Q1. `table4b` contains information on population size in each country in each of two years. It is untidy. Why?
+#' 
+## ------------------------------------------------------------------
+
+table4b
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A1. It is untidy because the second and third columns are not variables, but instead values of a variable, year (just like the example above). In other words, there are data in the column names.
+#' 
+#' 
+#' Q2. Tidy `table4b`
+#' 
+## ------------------------------------------------------------------
+
+
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A2.
+#' 
+#' 
+## ------------------------------------------------------------------
+
+
+table4b %>%
+    pivot_longer(cols = c("1999", "2000"),
+                 names_to = "year",
+                 values_to = "population_size")
+
+
+#' 
+#' 
+#' ## join functions
+#' 
+#' Often it can be useful to save data in multiple tables, rather than one massive table. This is the way relational databases, like Microsoft Access, work. In our toy example here, `table4a` and `table4b` contain data that we'd like to bring together into a single tibble. First, we save tidy versions of the two tables:
+#' 
+## ------------------------------------------------------------------
+
+tidy4a <- table4a %>%
+    gather(`1999`, `2000`,
+           key = "year",
+           value = "cases")
+tidy4a
+
+tidy4b <- table4b %>%
+    gather(`1999`, `2000`,
+           key = "year",
+           value = "population")
+tidy4b
+
+
+#' 
+#' And combine them using `left_join()` (which is technically a {dplyr}, not a {tidyr} function, but it makes sense here as it helps us tidy our data)
+#' 
+## ------------------------------------------------------------------
+
+left_join(tidy4a, tidy4b)
+
+
+#' 
+#' left_join(x, y): return all rows from x, and all columns from x and y. Rows in x with no match in y will have NA values in the new columns. If there are multiple matches between x and y, all combinations of the matches are returned as separate rows.
+#' 
+#' right_join(x, y): return all rows from y, and all columns from x and y. Rows in y with no match in x will have NA values in the new columns. If there are multiple matches between x and y, all combinations of the matches are returned.
+#' 
+#' This is a very powerful function, and one I use virtually anytime I analyze data. But you have to be careful with it, as it is quite easy to mistakenly multiply the size of your dataset. For example, imagine we did this:
+#' 
+## ------------------------------------------------------------------
+
+left_join(tidy4a, table4b)
+
+
+#' 
+#' We see the resultant table is not tidy. So, we might want to tidy it, as above:
+#' 
+## ------------------------------------------------------------------
+
+left_join(tidy4a, table4b) %>%
+    pivot_longer(cols = c("1999", "2000"),
+                 names_to = "annum",
+                 values_to = "population_size")
+
+
+#' 
+#' We might look at this quickly and see that "year" appears twice, so simply remove the column. So here we append `select(-4)` to drop the fourth column:
+#' 
+## ------------------------------------------------------------------
+
+left_join(tidy4a, table4b) %>%
+    pivot_longer(cols = c("1999", "2000"),
+                 names_to = "annum",
+                 values_to = "population_size") %>%
+     select(-4)
+
+
+
+#' 
+#' Our dataset is now twice as long as it should be, and also contains incorrect combinations of year and population size. This is a simple example, and might seem contrived, but this is very easy to do in real-world situations. Being friendlier than {base} R, the {tidyverse} functions often warn us when we are about to make a mistake like this. For example, here I try to do the same `pivot_longer()`, but name my new column `year` (which is reasonable thing to do).
+#' 
+## ------------------------------------------------------------------
+
+left_join(tidy4a, table4b) %>%
+    pivot_longer(cols = c("1999", "2000"),
+                 names_to = "year",
+                 values_to = "population_size")
+
+
+#' 
+#' We are told we have made an error and a brief explanation is added. But we won't always be so lucky, so we need to constantly check as we work on datasets to ensure we haven't introduce ghost rows that don't represent real data.
+#' 
+#' ## pivot_wider()
+#' 
+#' `pivot_wider()` solves another fairly common problem: an observation is scattered across multiple rows. e.g., `table2`: an observation is a country in a year, but each observation is spread across two rows.
+#' 
+## ------------------------------------------------------------------
+
+table2
+
+
+#' 
+#' To fix this, we need to define the existing columns in the dataset that contain information that should be variables (i.e., new columns) in the tidied dataset (here, 'type') and the column that contains the data values (here, 'count'). Once we've figured that out, we can use `pivot_wider()`:
+#' 
+## ------------------------------------------------------------------
+
+table2 %>%
+    pivot_wider(names_from = type,
+                values_from = count)
+
+
+#' 
+#' Here is a second example. We make a simple tibble, called `df`, that lists the number of points scored for and against two football teams in their first three games:
+#' 
+## ------------------------------------------------------------------
+
+df <- tribble(       # tribble() allows us to type in data to make a tibble
+                     # I only ever use it for classroom examples
+  ~team, ~game, ~for_against, ~points,
+  "Michigan",        "1",   "for",     30,
+  "Michigan",        "1",   "against",  3,
+  "Michigan",        "2",   "for",     35,
+  "Michigan",        "2",   "against",  7,
+  "Michigan",        "3",   "for",     31,
+  "Michigan",        "3",   "against",  6,
+  "Ohio State",      "1",   "for",     23,
+  "Ohio State",      "1",   "against",  3,
+  "Ohio State",      "2",   "for",     35,
+  "Ohio State",      "2",   "against",  7,
+  "Ohio State",      "3",   "for",     63,
+  "Ohio State",      "3",   "against",  3,
+)
+df
+
+
+#' 
+#' ### your turn
+#' 
+#' Q. Tidy `df`.
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A.
+#' 
+#' 
+## ------------------------------------------------------------------
+
+df %>%
+    pivot_wider(names_from = for_against,
+                values_from = points)
+
+
+#' 
+#' 
+#' We've learned how to tidy `table2` and `table4`, but not `table3`. `table3` has a different problem.
+#' 
+## ------------------------------------------------------------------
+
+table3
+
+
+#' 
+#' We have one column (`rate`) that contains two variables (`cases` and `population`). We can fix this with `separate()`; `unite()` does the opposite, it helps when a single variable is spread across multiple columns.
+#' 
+#' 
+#' ## separate_wider_x
+#' 
+#' separate_wider_x commands pull apart one column into multiple columns, by splitting wherever a separator character appears (`separate_wider_delim()`) or at a certain position (`separate_wider_position()`).
+#' 
+#' In `table3`, the `rate` column contains both `cases` and `population` variables, and we need to split it into two variables. `separate_wider_delim()` takes the name of the column to separate, the delimiter to separate cells on, and the names of the columns to separate into:
+#' 
+## ------------------------------------------------------------------
+
+table3 %>%
+    separate_wider_delim(rate,
+                         delim = "/",
+                         names = c("cases", "population"))
+
+
+#' 
+#' 
+#' But see the column types - 'case' and 'population' are character columns (<chr>). This is the default behavior in `separate_wider_delim()`: when columns are split they inherit the type of variable from the parent column. So, because `rate` was <chr>, both of columns resulting from the split are <chr>. Here this is not very useful because `cases` and `population` are numbers. We can add the `type.convert()` to convert these to their correct type.
+#' 
+## ------------------------------------------------------------------
+
+table3 %>%
+    separate_wider_delim(rate,
+                         delim = "/",
+                         names = c("cases", "population")) %>%
+     type.convert(as.is = TRUE)
+
+
+#' 
+#' 
+#' You can also also split columns based at certain position using `separate_wider_position()` . You list the column you want to split up, and then a list of columns into which you want to split it and how many places each should take.
+#' 
+#' For example, you can use this arrangement to separate the first and last two digits of each year.
+#' 
+## ------------------------------------------------------------------
+
+
+table3 %>%
+    separate_wider_position(year,
+                           c(century = 2, year = 2))
+
+
+#' 
+#' and this splits year into four columns, each one character wide
+#' 
+## ------------------------------------------------------------------
+
+
+table3 %>%
+    separate_wider_position(year,
+                           c(thousands = 1, hundreds = 1,
+                             tens = 1, ones = 1))
+
+
+#' 
+#' 
+#' These make these data less tidy, but the command is useful in other cases (see below).
+#' 
+#' I rarely use this, but for the sake of completeness I will note that separate_longer_x divides one row into multiple rows, by splitting wherever a separator character appears (`separate_longer_delim()`) or at a certain position (`separate_longer_position()`).
+#' 
+#' 
+#' ## unite()
+#' 
+#' -`unite()` is inverse of `separate_wider_x()`: it combines multiple columns into a single column.  e.g., use `unite()` to rejoin the *century* and *year* columns that we created in the last example. `unite()` takes a data frame, the name of the new variable to create, and a set of columns to combine:
+#' 
+## ------------------------------------------------------------------
+
+(yuck <- table3 %>%
+         separate_wider_position(year,
+                           c(century = 2, year = 2)) )
+
+yuck %>%
+     unite(new, century, year)
+
+
+#' 
+#' In this case we also need to use the 'sep' argument. The default will place an underscore ("_") between the values from different columns. Here we don't want any separator so we use "":
+#' 
+## ------------------------------------------------------------------
+
+yuck %>%
+     unite(new, century, year, sep = "")
+
+
+#' 
+#' 
+#' *your turn*
+#' 
+#' Q. Using `table2`, combine the first two columns into a single column that contains the country name followed by a comma and a space, and then the year. Name this new column "label".  In other words, the first few rows should look like this:
+#' 
+#'   label             type            count
+#'    <chr>             <chr>           <dbl>
+#'  1 Afghanistan, 1999 cases             745
+#'  2 Afghanistan, 1999 population   19987071
+#'  3 Afghanistan, 2000 cases            2666
+#'  4 Afghanistan, 2000 population   20595360
+#' 
+#' 
+## ------------------------------------------------------------------
+
+table2
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A2.
+#' 
+#' 
+## ------------------------------------------------------------------
+
+table2 %>%
+     unite(label, country, year, sep = ", ")
+
+
+#' 
+#' 

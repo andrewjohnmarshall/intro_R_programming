@@ -1,0 +1,1031 @@
+#' 
+#' 19. Expanding our programming toolbox
+#' 
+#' # Packages
+#' 
+## ------------------------------------------------------------------
+
+library(tidyverse)
+library(palmerpenguins)
+
+
+#' 
+#' # More advanced functions
+#' 
+#' We first learned about functions in class 4. A function in R is an object that (usually) takes some *arguments*, performs some *action(s)*, and (usually) returns some *output.* As a reminder, the basic structure is:
+#' 
+#' name <- function(*arguments*) {
+#'   *action(s)*
+#'   return(*output*)
+#' }
+#' 
+#' Today we're going to expand our functions toolbox in a few ways, which will allow us greater flexibility and power.
+#' 
+#' ## including default values for arguments
+#' 
+#' When we create functions with many inputs, it is often useful to add default values that the function will use if the user does not specify their own. Most functions that we’ve used so far have default values. For example, when we make a scatter plot in {ggplot} it uses default values for inputs like plotting characters, axis labels, theme, etc. Including defaults can save the user a lot of time because it keeps them from having to specify every possible input to a function.
+#' 
+#' To add a default value to a function input, we simply include our default values after each argument. 
+#' 
+#' For example, below we have a simple function that will estimate expenditures on different kinds of coffee. We set default values of 0 for each type of coffee drink in our function. By doing this, R will set any inputs that the user does not specify to 0 – in other words, it will assume that if you don’t tell it how many drinks of a certain type you had, then you must have had 0.
+#' 
+## ------------------------------------------------------------------
+
+coffee_budget <- function(drip = 0,
+                          espresso = 0,
+                          special = 0) {
+
+  output <- drip * 3.5 + 
+            espresso * 5.25 + 
+            special * 6.5
+
+  return(output)
+}
+
+
+#' 
+#' Let’s test the function with data for someone who had 5 drip coffees but no espressos or specials. Because 0 is the default, we can just ignore these arguments:
+#' 
+## ------------------------------------------------------------------
+
+coffee_budget(drip = 5)
+
+
+#' 
+#' $17,50. Note, if we try this with a function without defaults, we get an error message. 
+#' 
+## ------------------------------------------------------------------
+
+coffee_budget2 <- function(drip,
+                          espresso,
+                          special) {
+
+  output <- drip * 3.5 + 
+            espresso * 5.25 + 
+            special * 6.5
+
+  return(output)
+}
+
+coffee_budget2(drip = 5)
+
+
+#' 
+#' The error message is informative, it tells us that "Error in coffee_budget2(drip = 5) : argument "espresso" is missing, with no default". Note that we are also missing a value for special, but the first missing value created an error to stop the function. If we provide values for the first two, but skip "special", we'll get a similar error:
+#' 
+#' 
+## ------------------------------------------------------------------
+
+coffee_budget2(drip = 5, espresso = 3)
+
+
+#' 
+#' So setting reasonable defaults makes our functions more robust and easier to use. In a word, it makes them better. Looking up functions in the help viewer will tell you what the default values are. For example,
+#' 
+## ------------------------------------------------------------------
+
+?mean
+
+
+#' 
+#' 
+#' ## using if, then statements in functions
+#' 
+#' Early on (also in class 4), we learned about conditionals. We learned a basic usage: 
+#' 
+#' if (*condition*) { 
+#' *action*
+#' }
+#' 
+#' where: *condition* is a single logical question (answered TRUE or FALSE), *action* is what is triggered if the *condition* is met (evaluated as TRUE).
+#' 
+## ------------------------------------------------------------------
+
+my_fun <- function(x) {
+if (x < 10) {
+  cat("x is smaller than 10\n") 
+ } 
+}
+
+my_fun(4)
+my_fun(19)
+
+
+#' 
+#' and then extended this to if-else statements that provided an additional else clause which is executed whenever the *condition* is evaluated as FALSE.
+#' 
+#' Basic usage: if (*condition*) { *action1* } else {*action2* }
+#' 
+## ------------------------------------------------------------------
+
+my_fun2 <- function(x) {
+if (x < 10) {
+    print("x is smaller than 10")
+} else {
+    print("x is larger or equal to 10")
+ }
+}
+
+my_fun2(1.8)
+my_fun2(18)
+
+
+#' 
+#' We also learned that these can be nested with multiple else statements:
+#' 
+## ------------------------------------------------------------------
+
+my_fun3 <- function (x) {
+  if (x < 10) {
+    print("x is smaller than 10")
+  } else {
+    if (x > 10) {
+      print("x is larger than 10")
+    } else {
+      print("x is exactly 10")
+    }
+  }
+}
+
+my_fun3(1)
+my_fun3(10)
+my_fun3(100)
+
+
+#' 
+#' or combined
+#' 
+## ------------------------------------------------------------------
+
+my_fun4 <- function (x) {
+if (x < 10) {
+    print("x is smaller than 10")
+} else if (x > 10) {
+    print("x is larger than 10")
+} else {
+    print("x is exactly 10") 
+ }
+}
+
+my_fun4(1)
+my_fun4(10)
+my_fun4(100)
+
+
+#' 
+#' When we first learned about conditional statements, the actions that the functions executed were pretty simple. But there is nothing stopping us from adding more complex actions to our functions. 
+#' 
+#' Here we'll create a function called `penguin_tamer()` that takes a vector of data and either creates a histogram, provides some statistics, or tells a joke. The function has two arguments: 
+#' 
+#' x:    a vector of data
+#' what: a string value that tells the function what to do with x
+#' 
+#' We’ll set the function up to accept three different values of what:
+#' 
+#' "plot"  that will plot the histogram
+#' "stats" that will return basic statistics about the vector
+#' "joke"  that will return a programming-related dad joke 
+#' 
+#' and return an error message for any other request.
+#' 
+## ------------------------------------------------------------------
+
+penguin_tamer <- function(x, what) {
+  if (what == "plot") {
+    df <- data.frame(value = x) # assign name to the
+                                # data frame column
+    ggplot(data = df, aes(x = value)) + # use the named column
+    geom_histogram() + 
+    theme_bw() +
+    labs(title = "Here's a histogram of your fascinating data!")
+  } else if (what == "stats") {
+    print(paste("The mean of this data set is ", 
+                round(mean(x, na.rm = TRUE), 2),
+                " and the standard deviation is ", 
+                round(sd(x, na.rm = TRUE), 2),
+                sep = ""))
+  } else if (what == "joke") {
+    print("Why do programmers prefer dark mode? Because light attracts bugs.")
+  } else {
+    print("I'm sorry, I can't handle that request.")
+  }
+}
+
+
+#' 
+#' When writing a more complex function, it is often worthwhile to test the constituent parts to make sure each works as we expect. So, for the above, we'd try each part in turn:
+#' 
+## ------------------------------------------------------------------
+
+# provide a vector to test 
+x <- rnorm(100)  # 100 random draws from a normal distribution
+
+# run the code
+    df <- data.frame(value = x) # assign name to the
+                                # data frame column
+    ggplot(data = df, aes(x = value)) + # use the named column
+    geom_histogram() + 
+    theme_bw() +
+    labs(title = "Here's a histogram of your fascinating data!")
+
+
+#' 
+#' Works fine. Next up:
+#' 
+## ------------------------------------------------------------------
+
+# run the code
+  print(paste("The mean of this data set is ", 
+                round(mean(x, na.rm = TRUE), 2),
+                " and the standard deviation is ", 
+                round(sd(x, na.rm = TRUE), 2),
+                sep = ""))
+  
+
+#' 
+#' and
+#' 
+## ------------------------------------------------------------------
+
+# no initial value is required:
+
+print("Why do programmers prefer dark mode? Because light attracts bugs.")
+
+
+#' 
+#' finally:
+#' 
+## ------------------------------------------------------------------
+
+print("I'm sorry, I can't handle that request.") 
+
+
+#' 
+#' Now we know the parts work, we'll try the whole `penguin_tamer()` function with different arguments:
+#' 
+## ------------------------------------------------------------------
+
+penguin_tamer(x = penguins$flipper_length_mm, 
+        what = "plot")
+
+
+#' 
+## ------------------------------------------------------------------
+
+penguin_tamer(x = penguins$flipper_length_mm, 
+        what = "stats")
+
+
+#' 
+## ------------------------------------------------------------------
+
+penguin_tamer(x = penguins$flipper_length_mm, 
+        what = "joke")
+
+
+#' 
+## ------------------------------------------------------------------
+
+penguin_tamer(x = penguins$flipper_length_mm, 
+        what = "swim")
+
+
+#' 
+#' 
+#' ## a worked example: `zoomy.plotter()`
+#' 
+#' Now we'll bring together the things we've learned thus far to create our own custom plotting function called `zoomy.plotter()` that produces typical {ggplot2} scatter plots, but has several additional arguments:
+#' 
+#' default values for *x*, *y*, and *color*
+#' 
+#' *add.mean*: A logical value indicating whether or not to add vertical and horizontal lines at the mean values of x and y respectively. 
+#' 
+#' *add.regression*: A logical value indicating whether or not to add a linear regression line.
+#' 
+#' *add.modeltext*: A logical value indicating whether or not to include the regression equation as a title to the plot.
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter <- function(x = rnorm(100),
+                          y = rnorm(100),
+                          add.mean = FALSE,
+                          add.regression = FALSE,
+                          add.modeltext = FALSE,
+                          col = "darkorange") {
+
+    # make the input a tibble, so {ggplot} can handle it:
+    df <- tibble(x = x, y = y)
+
+    # remove NAs, to reduce problems down the line
+    # okay for some exploration, but bad general practice
+    df <- drop_na(df)
+
+    # make and save default ggplot scatter plot
+    p <- ggplot(data = df, aes(x = x, y = y)) +
+         geom_point(color = col, size = 2, alpha = 0.8) +
+         theme_bw()
+
+    # add mean reference lines if add.mean is TRUE
+    if(add.mean == TRUE) {
+        p <- p +
+            geom_hline(yintercept = mean(y, na.rm = TRUE),
+                       linetype = "dashed") +
+            geom_vline(xintercept = mean(x, na.rm = TRUE), 
+                       linetype = "dashed")
+    }
+    
+    # add regression line if add.regression is TRUE
+    if(add.regression == TRUE) {
+        model <- lm(y ~ x, data = df)       # fit linear model
+        p <- p + geom_smooth(method = "lm", # add regression line
+                             color = "gray60", se = FALSE) 
+    }
+
+    # add regression equation text if add.modeltext is TRUE
+    if(add.modeltext == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        coefficients <- coef(model)   # extract coefficients
+                                      # from model object
+        intercept <- round(coefficients[1], 2)
+        slope <- round(coefficients[2], 2)
+        title.text <- paste("Regression Equation: y = ", 
+                            intercept, " + ", slope, " * x", sep = "")
+        p <- p + labs(title = title.text)
+    }
+
+    # return the plot
+    return(p)
+}
+
+
+#' 
+#' ### your turn
+#' 
+#' Q. Test each of the component parts of the function independently to check if each work. Here is the code again:
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter <- function(x = rnorm(100),
+                          y = rnorm(100),
+                          add.mean = FALSE,
+                          add.regression = FALSE,
+                          add.modeltext = FALSE,
+                          col = "darkorange") {
+
+    # make the input a tibble, so {ggplot} can handle it:
+    df <- tibble(x = x, y = y)
+
+    # remove NAs, to reduce problems down the line
+    df <- drop_na(df)
+
+    # make and save default ggplot scatter plot
+    p <- ggplot(data = df, aes(x = x, y = y)) +
+         geom_point(color = col, size = 2, alpha = 0.8) +
+         theme_bw()
+
+    # add mean reference lines if add.mean is TRUE
+    if(add.mean == TRUE) {
+        p <- p +
+            geom_hline(yintercept = mean(y, na.rm = TRUE),
+                       linetype = "dashed") +
+            geom_vline(xintercept = mean(x, na.rm = TRUE), 
+                       linetype = "dashed")
+    }
+    
+    # add regression line if add.regression is TRUE
+    if(add.regression == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        p <- p + geom_smooth(method = "lm", 
+                             color = "gray60", se = FALSE) # add regression line
+    }
+
+    # add regression equation text if add.modeltext is TRUE
+    if(add.modeltext == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        coefficients <- coef(model)   # extract coefficients
+                                      # from model object
+        intercept <- round(coefficients[1], 2)
+        slope <- round(coefficients[2], 2)
+        title.text <- paste("Regression Equation: y = ", intercept, " + ", slope, " * x", sep = "")
+        p <- p + labs(title = title.text)
+    }
+
+    # return the plot
+    return(p)
+}
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A. One possibly tricky thing here is that you need to give a value for color, as 'col' is not defined outside our function.
+#' 
+## ------------------------------------------------------------------
+
+x <- penguins$body_mass_g
+y <- penguins$bill_depth_mm
+col = "darkorange"
+
+    # make the input a tibble, so {ggplot} can handle it:
+    df <- tibble(x = x, y = y)
+
+    # remove NAs, to reduce problems down the line
+    df <- drop_na(df)
+
+    # make and save default ggplot scatter plot
+    p <- ggplot(data = df, aes(x = x, y = y)) +
+         geom_point(color = col, size = 2, alpha = 0.8) +
+         theme_bw()
+
+p
+
+
+#' 
+#' add mean reference lines if add.mean is TRUE
+#' 
+#'     
+## ------------------------------------------------------------------
+
+p +
+            geom_hline(yintercept = mean(y, na.rm = TRUE),
+                       linetype = "dashed") +
+            geom_vline(xintercept = mean(x, na.rm = TRUE), 
+                       linetype = "dashed")
+
+
+#' 
+#' add regression line if add.regression is TRUE
+#' 
+## ------------------------------------------------------------------
+
+    model <- lm(y ~ x, data = df)   # fit linear model
+    p + geom_smooth(method = "lm",  # add regression line
+                             color = "gray60", se = FALSE) 
+
+
+#' 
+#' add regression equation text if add.modeltext is TRUE
+#' 
+## ------------------------------------------------------------------
+
+      model <- lm(y ~ x, data = df) # fit linear model
+        coefficients <- coef(model)   # extract coefficients
+                                      # from model object
+        intercept <- round(coefficients[1], 2)
+        slope <- round(coefficients[2], 2)
+        title.text <- paste("Regression Equation: y = ", 
+                            intercept, " + ", slope, " * x", sep = "")
+         p + labs(title = title.text)
+
+
+#' 
+#' ## testing the example
+#' 
+#' Let’s try it out!
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.modeltext = TRUE)
+
+
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.mean = TRUE)
+
+
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.regression = TRUE)
+
+
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.modeltext = TRUE,
+              col = "cornflowerblue")
+
+
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.modeltext = TRUE,
+              add.mean = TRUE,
+              col = "goldenrod")
+
+
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(add.modeltext = TRUE,
+              add.mean = TRUE,
+              col = "tomato")
+
+
+#' 
+#' Note, as with almost all functions we create on the fly, there are ways to break this:
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter(y = penguins$flipper_length_mm,
+              add.modeltext = TRUE,
+              add.mean = TRUE,
+              col = "navy")
+
+
+#' 
+#' What happened? Can you think of a way to fix this?
+#' 
+#' 
+#' ### your turn
+#' 
+#' Q. Modify the code below to add an additional argument, called 'add.se' that adds a regression line with a standard error, setting the default to FALSE. Work with others at your table, and test the code to make sure it works.
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter2 <- function(x = rnorm(100),
+                          y = rnorm(100),
+                          add.mean = FALSE,
+                          add.regression = FALSE,
+                          add.modeltext = FALSE,
+                          col = "darkorange") {
+
+    # make the input a tibble, so {ggplot} can handle it:
+    df <- tibble(x = x, y = y)
+
+    # remove NAs, to reduce problems down the line
+    df <- drop_na(df)
+
+    # make and save default ggplot scatterplot
+    p <- ggplot(data = df, aes(x = x, y = y)) +
+         geom_point(color = col, size = 2, alpha = 0.8) +
+         theme_bw()
+
+    # add mean reference lines if add.mean is TRUE
+    if(add.mean == TRUE) {
+        p <- p +
+            geom_hline(yintercept = mean(y, na.rm = TRUE),
+                       linetype = "dashed") +
+            geom_vline(xintercept = mean(x, na.rm = TRUE), 
+                       linetype = "dashed")
+    }
+
+    # add regression line if add.regression is TRUE
+    if(add.regression == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        p <- p + geom_smooth(method = "lm", 
+                             color = "gray60", se = FALSE) # add regression line
+    }
+
+    # add regression equation text if add.modeltext is TRUE
+    if(add.modeltext == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        coefficients <- coef(model)    # extract coefficients from model object
+        intercept <- round(coefficients[1], 2)
+        slope <- round(coefficients[2], 2)
+        title.text <- paste("Regression Equation: y = ", intercept, " + ", slope, " * x", sep = "")
+        p <- p + labs(title = title.text)
+    }
+
+    # return the plot
+    return(p)
+}
+
+
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' A.   New code is tagged with "# <<"
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter2 <- function(x = rnorm(100),
+                          y = rnorm(100),
+                          add.mean = FALSE,
+                          add.regression = FALSE,
+                          add.modeltext = FALSE,
+                          add.se = FALSE,              # <<
+                          col = "darkorange") {
+
+    # make the input a tibble, so {ggplot} can handle it:
+    df <- tibble(x = x, y = y)
+
+    # remove NAs, to reduce problems down the line
+    df <- drop_na(df)
+
+    # make and save default ggplot scatterplot
+    p <- ggplot(data = df, aes(x = x, y = y)) +
+         geom_point(color = col, size = 2, alpha = 0.8) +
+         theme_bw()
+
+    # add mean reference lines if add.mean is TRUE
+    if(add.mean == TRUE) {
+        p <- p +
+            geom_hline(yintercept = mean(y, na.rm = TRUE),
+                       linetype = "dashed") +
+            geom_vline(xintercept = mean(x, na.rm = TRUE), 
+                       linetype = "dashed")
+    }
+
+    # add regression line if add.regression is TRUE
+    if(add.regression == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        p <- p + geom_smooth(method = "lm", 
+                             color = "gray60", se = FALSE) # add regression line
+    }
+
+    # add regression equation text if add.modeltext is TRUE
+    if(add.modeltext == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        coefficients <- coef(model)    # extract coefficients from model object
+        intercept <- round(coefficients[1], 2)
+        slope <- round(coefficients[2], 2)
+        title.text <- paste("Regression Equation: y = ", intercept, " + ", slope, " * x", sep = "")
+        p <- p + labs(title = title.text)
+    }
+
+    # add regression line with SEs if add.se is TRUE                  # <<
+    if(add.se == TRUE) {                                              # <<
+        model <- lm(y ~ x, data = df)       # fit linear model        # << 
+        p <- p + geom_smooth(method = "lm", # add regression line     # <<
+                             color = "olivedrab")                     # <<
+    }                                                                 # <<
+
+        # return the plot
+    return(p)
+}
+
+
+#' 
+#' test:
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter2(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.modeltext = TRUE,
+              add.se = TRUE,
+              col = "goldenrod")
+
+
+#' 
+#' 
+#' ## viewing function code
+#' 
+#' You can view the code underlying functions you enter in R by entering the name of the function without any parentheses or arguments.
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter
+penguin_tamer
+
+
+#' 
+#' This works for some built in functions, too. For others, it is a bit more complicated, but usually a simple web search will unearth the source code. Looking at source code can be quite helpful, as it can help you understand how it works, provide a template for you to modify, etc. 
+#' 
+#' 
+#' ## using stop() 
+#' 
+#' `stop()` will completely stop a function and print an error
+#' 
+#' By default, all the code in a function will be evaluated when it is executed. However, there may be cases where there’s no point in evaluating some code and it’s best to stop everything and leave the function altogether. For example, imagine we have a function called `matrix_wrangler()` that has a single argument called 'mat' which is supposed to be a matrix. If the user accidentally enters a data frame rather than a matrix, it might be best to stop the function altogether rather than to waste time executing code. To tell a function to stop running, we use the `stop()` function.
+#' 
+#' If R ever executes a `stop()` function, it will automatically quit the function it’s currently evaluating, and print an error message. You can define the exact error message you want by including a string as the main argument.
+#' 
+#' For example, the following function `matrix_wrangler()` will print an error message if the argument mat is not a matrix.
+#' 
+## ------------------------------------------------------------------
+
+matrix_wrangler <- function(mat) {
+  
+if(is.matrix(mat) == FALSE) {
+  stop("Check your argument, it is not a matrix!")
+  }
+else {
+  print(paste("Thanks for giving me a matrix. The matrix has ", nrow(mat), 
+" rows and ", ncol(mat), " columns.", 
+sep = ""))
+ }
+}
+
+
+#' 
+#' Let’s test it. First we’ll enter an argument that is definitely not a matrix:
+#' 
+## ------------------------------------------------------------------
+
+matrix_wrangler(mat = "This is a string, not a matrix")
+
+
+#' 
+#' Now we’ll enter a valid matrix argument:
+#' 
+## ------------------------------------------------------------------
+
+my_mat <- matrix(1:100, nrow = 20, ncol = 5)
+my_mat
+
+matrix_wrangler(mat = my_mat)
+
+
+#' 
+#' Incidentally, with stop statements, you can omit the `else{}` function. So this also works:
+#' 
+## ------------------------------------------------------------------
+
+matrix_wrangler2 <- function(mat) {
+  
+if(is.matrix(mat) == FALSE) {
+  stop("Check your argument, it is not a matrix!")
+  }
+  print(paste("Thanks for giving me a matrix. The matrix has ", 
+              nrow(mat), " rows and ", ncol(mat), " columns.", 
+sep = ""))
+}
+
+matrix_wrangler2(mat = my_mat)
+matrix_wrangler2(mat = "Hello world!")
+
+
+#' 
+#' 
+#' ## checking of package is loaded
+#' 
+#' Here's a "real world" example of the `stop()` function. When I was building `penguin_tamer()` it worked fine except for the plotting part. It turned out that was because I hadn't loaded {ggplot2} first. So, I added an extra `if` to stop the function if {ggplot2} is missing. It uses a version of `loadNamespace()` that loads the specified name: `requireNamespace()` is a wrapper for `loadNamespace()` that returns a logical value.
+#' 
+## ------------------------------------------------------------------
+
+penguin_tamerX <- function(x, what) {
+  # Ensure ggplot2 is available
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("{ggplot2} is not available. Please load it to use this function.")
+  }
+  if (what == "plot") {
+    df <- data.frame(value = x) # assign name to the
+                                # data frame column
+    ggplot(data = df, aes(x = value)) + # use the named column
+    geom_histogram() + 
+    theme_bw() +
+    labs(title = "Here's a histogram of your fascinating data!")
+  } else if (what == "stats") {
+    print(paste("The mean of this data set is ", 
+                round(mean(x, na.rm = TRUE), 2),
+                " and the standard deviation is ", 
+                round(sd(x, na.rm = TRUE), 2),
+                sep = ""))
+  } else if (what == "joke") {
+    print("Why do programmers prefer dark mode? Because light attracts bugs.")
+  } else {
+    print("I'm sorry, I can't handle that request.")
+  }
+}
+
+
+#' 
+#' 
+#' ## using vectors as arguments
+#' 
+#' You can use any kind of object as an argument to a function. For example, we could re-create the function `coffee_budget()` by having a single vector object as the argument, rather than three separate values. In this version, we’ll extract the values of a, b and c using indexing:
+#' 
+## ------------------------------------------------------------------
+
+coffee_budget <- function(coffee.vec) {
+
+  drip     <- coffee.vec[1]
+  espresso <- coffee.vec[2]
+  special  <- coffee.vec[3]
+  
+  output <- drip * 3.5 + 
+            espresso * 5.25 + 
+            special * 6.5
+
+  return(output)
+}
+
+
+#' 
+#' To use this function, the user enters their coffee consumption stats as a single vector, rather than as three different values.
+#' 
+## ------------------------------------------------------------------
+
+my_caffeine_habit <- c(1, 5, 2)
+coffee_budget(my_caffeine_habit)
+
+# or more succinctly:
+coffee_budget(c(1, 5, 2))
+
+
+#' 
+#' The downside of this is that it requires the user to remember the precise order that values are listed in the vector.
+#' 
+#' 
+#' ## reminder re: `source()`
+#' 
+#' As you do more R programming, you'll likely find yourself writing functions that you want to reuse in different contexts. Rather than retyping or pasting this code into each R file you work on, it can be easier to save the file somewhere handy and drop it into your R project as needed, and then load it in as is useful  (like the way we load packages using `library()`). As I've mentioned before, `source()` allows us to do this easily. Previously, we used this for a simple custom function for scaling our predictors by two standard deviations:
+#' 
+## ------------------------------------------------------------------
+
+source("scale2.R")
+scale2
+
+
+#' 
+#' Here's another real-world example. In 2023 I was working with colleagues on a paper and needed to customize the way {ggplot2} handled facets. I found a package online called {egg} that did almost what I was looking for, but it wasn't quite what I wanted. I thought I might want to use such a function again, so instead of embedding it in the code for that project I made it its own R script, which I can now use in other contexts
+#' 
+## ------------------------------------------------------------------
+
+source("panel_labeller.R")
+panel_labeller
+
+
+#' 
+#' (NB: This was used in Fig 8. here: https://doi.org/10.3390/ani13132111)
+#' 
+#' 
+#' ## using '...' to piggyback on existing functions
+#' 
+#' Often when we are making custom functions we're doing so to extend or modify existing R functions. In these cases, we'd like to retain the flexibility of the initial functions in our own new function so we can specify arguments that can be specified in the original function. Sometimes, however, the function we seek to modify allows users to specify dozens of arguments. Probably we don't need or want to include all possible arguments for the original function in our custom function. In these cases, we can take advantage of the hard work of the programmers who made the initial function by using the '...' notation to add the flexibility of the initial function to our new function. The '...' input allows our new function to specify arguments that can be specified in the original function.
+#' 
+#' For example, our `zoomy_plotter2()` function used {ggplot} under the hood to produce plots. But if we try to add an additional {ggplot2} argument to the function it doesn't work.
+#' 
+## ------------------------------------------------------------------
+
+# this works
+zoomy_plotter2(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.regression = TRUE,
+              col = "goldenrod")
+
+# this doesn't
+zoomy_plotter2(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.regression = TRUE,
+              col = "goldenrod",
+              shape = "X")
+
+
+#' 
+#' This is because the 'shape' argument is defined in {ggplot}, but not the `zoomy_plotter()` function. We can fix this by allowing our function to inherit functionality from {ggplot2}:
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter3 <- function(x = rnorm(100),
+                          y = rnorm(100),
+                          add.mean = FALSE,
+                          add.regression = FALSE,
+                          add.modeltext = FALSE,
+                          col = "darkorange",
+                          ...) {            # <<
+
+    # make the input a tibble, so {ggplot} can handle it:
+    df <- tibble(x = x, y = y)
+
+    # remove NAs, to reduce problems down the line
+    df <- drop_na(df)
+
+    # make and save default ggplot scatterplot
+    p <- ggplot(data = df, aes(x = x, y = y)) +
+         geom_point(color = col, size = 2, alpha = 0.8, ...) +
+         theme_bw()        # <<
+    # add mean reference lines if add.mean is TRUE
+    if(add.mean == TRUE) {
+        p <- p +
+            geom_hline(yintercept = mean(y, na.rm = TRUE),
+                       linetype = "dashed") +
+            geom_vline(xintercept = mean(x, na.rm = TRUE), 
+                       linetype = "dashed")
+    }
+
+    # add regression line if add.regression is TRUE
+    if(add.regression == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        p <- p + geom_smooth(method = "lm", 
+                             color = "gray60", se = FALSE) # add regression line
+    }
+
+    # add regression equation text if add.modeltext is TRUE
+    if(add.modeltext == TRUE) {
+        model <- lm(y ~ x, data = df) # fit linear model
+        coefficients <- coef(model)    # extract coefficients from model object
+        intercept <- round(coefficients[1], 2)
+        slope <- round(coefficients[2], 2)
+        title.text <- paste("Regression Equation: y = ", intercept, " + ", slope, " * x", sep = "")
+        p <- p + labs(title = title.text)
+    }
+
+    # return the plot
+    return(p)
+}
+
+
+#' 
+#' Now, it works:
+#' 
+## ------------------------------------------------------------------
+
+zoomy_plotter3(x = penguins$body_mass_g,
+              y = penguins$flipper_length_mm,
+              add.regression = TRUE,
+              col = "goldenrod",
+              shape = "X")
+
+
+#' 
+#' Those three characters (...) add a lot of functionality! 
+#' 
+#' They are not just for boomer texting... (https://www.ndtv.com/feature/explained-boomer-ellipses-in-texting-and-how-gen-z-is-reacting-to-it-6069697)
