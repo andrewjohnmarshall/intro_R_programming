@@ -1,0 +1,622 @@
+
+22. Overcoming common challenges
+
+# Packages
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+
+```
+
+
+# Solving common import challenges
+
+Often times when we pull data into R, it is not structured in a way that allows us to immediately do the things we'd like to do with it. We have already spent considerable time learning ways to tidy, parse, clean, unnest, and otherwise wrangle data. Here we will tackle a few other common problems with fairly simple solutions. First we read in a simple data set:
+
+```{r}
+
+students <- read_csv("students.csv")
+
+```
+
+We get the usual information provided by `read_csv()`: the number of rows and columns of data, the delimiter that was used to parse the data into columns (here, a comma), and the column specifications (names of columns grouped by the type of data the column contains). Examining this simple data set, we see some issues:
+
+```{r}
+
+students
+
+```
+
+- there is an 'NA' value ("N/A") in column 3 that is not indicated as a true 'NA'
+- the first two column names are a bit funky
+- the 'mealPlan' column is probably a factor (one of a constrained list of outcomes)
+- the 'AGE' column is indicated as including characters, not doubles (numbers), because
+- one of the numbers is written out as "five".
+
+These are all fairly common challenges we might discover when we import data. Here we'll solve each of these in turn.
+
+
+### identifying NAs
+
+In the 'favorite.food' column, in addition to some food items there is the character string "N/A", which clearly indicates a missing value but that R won't recognize as "not available" because it is not a true 'NA'. We can address this using the 'na' argument in `read_csv()`. (Note, this is analogous to the 'na.strings = ' argument in base R's `read.csv()`). By default, `read_csv()` only recognizes empty cells ("") in this data set as 'NA's, but we can also have it convert "N/A" to 'NA' by adding it to the 'na' argument when we import the data:
+
+```{r}
+
+students <- read_csv("students.csv", 
+                     na = c("N/A", ""))
+students
+
+```
+
+now we see two 'NA's. Note, if we use the 'na' argument, `read_csv()` does not automatically read empty cells as 'NA's any more:
+
+```{r}
+
+students <- read_csv("students.csv", 
+                     na = c("N/A"))
+students
+
+```
+
+So, we need to specify the empty cell as well:
+
+```{r}
+
+students <- read_csv("students.csv", 
+                     na = c("N/A", ""))
+students
+
+```
+
+
+## taming unruly column headings
+
+The `Student ID` and `Full Name` columns are surrounded by backticks. This is because they contain spaces, breaking R's usual rules for variable names, which must be "syntactic". A syntactic name may include letters, digits, periods (.) and underscores (_) but can’t begin with _ or a digit. Additionally, you can’t use any of the reserved words like "TRUE", "NULL", "if", and "function" (see the complete list in `?Reserved`). A name that doesn’t follow these rules is a non-syntactic name, and will produce an error in R:
+
+```{r}
+
+_xyz <- 1
+if <- 10
+
+```
+
+You can force R to create non-syntactic names, but it's not a good idea. You can refer to existing non-syntactic names by surroundings them with backticks. Here we do this and rename them in a pipe:
+
+```{r}
+
+students %>%  
+  rename(student_id = `Student ID`,
+         full_name = `Full Name`)
+
+```
+
+An alternative approach, which makes much more sense if you have a lot of column names to fix, is to use {janitor}'s `clean_names()` function to turn them all into snake case (e.g., "all_into_snake_case"). Although not part of the {tidyverse}, it offers handy functions for data cleaning and works well with pipes:
+
+```{r}
+
+students %>%  
+  clean_names()
+
+```
+
+For an example that showcases {janitor}'s functions, see: https://sfirke.github.io/janitor/
+
+
+### changing variable types
+
+Another common task after reading in data is to consider variable types. For example, based on its name, 'meal_plan' seems to be a categorical variable with a known set of possible values. Data such as this are best represented as factors (more below). We can easily change the type of data column in a pipe, here using `factor()` to turn the 'meal_plan' column into a factor and save it as the same name (`as.factor()` would also work):
+
+```{r}
+
+students %>% 
+  clean_names() %>% 
+  mutate(meal_plan = factor(meal_plan))
+
+```
+
+Note that the values in the `meal_plan` variable have stayed the same, but the type of variable denoted underneath the variable name has changed from character (<chr>) to factor (<fct>). 
+
+We also see that the 'student_id' is being treated as a number. But in most cases, ID #s are used as unique identifier strings, rather than a numeric value that we would want to use for math (e.g., the mean of 'student-id' is nonsensical). So we might want to treat that as a character, rather than a factor. We could convert that by adding a row to the existing pipe:
+
+```{r}
+
+students %>% 
+  clean_names() %>% 
+  mutate(meal_plan = factor(meal_plan),
+         student_id = as.character(student_id))
+
+```
+
+Note, if there were some convention built into the numbering systems that might be useful in a wrangling context (e.g., if it were a longer ID # where the first two digits indicate the year a student entered the school), there are other ways we might deal with this.
+
+
+## fixing specific values
+
+The column 'age' is, however, something that we'd like to treat as a number. But when we try to do that, we get an error:
+
+```{r}
+
+students %>% 
+  clean_names() %>%  
+  summarize(mean_age = mean(age))
+
+```
+
+This is because 'age' is not a numeric column. It is a character column because one of the observations is typed out as `five` instead of a numeric `5`. This is an example of a single value that we want to change, which can be done using `if_else()`. Here we combine this with `parse_number()`, which parses the first number it finds in a cell, dropping any non-numeric characters before the first number and all characters after the first number. (although not relevant here, it would also automatically remove "grouping marks", like commas separating thousands, millions, etc.)
+
+```{r}
+
+students %>% 
+  clean_names() %>% 
+  mutate(meal_plan = factor(meal_plan),
+         student_id = as.character(student_id),
+         age = parse_number(if_else(age == "five", "5", age)))
+
+```
+
+Note this fixes it once because there is only one instance of "five". If there had been more, all of them would have been changed. Once we have fixed the column type, we can do numeric calculations with 'age':
+
+```{r}
+
+students %>% 
+  clean_names() %>% 
+  mutate(meal_plan = factor(meal_plan),
+         student_id = as.character(student_id),
+         age = parse_number(if_else(age == "five", "5", age))) %>%  
+  summarize(mean_age = mean(age, na.rm = TRUE))
+
+```
+
+
+# Working with factors 
+
+In R, factors are used for categorical variables, variables that have a fixed and known set of possible values. For example, there are 12 months in a calendar year. In a column indicating month, each observation is limited to taking one of these twelve, categorical, values. Categorical data are regularly found in data sets. As outcome variables, they require their own set of tools to be modeled in a principled way, and as predictors they may also require special care. This means that learning how to work with this type of data effectively and efficiently can be really beneficial.
+
+Base R provides some basic tools for creating and manipulating factors, which we'll supplement with {forcats}, the core {tidyverse} package designed to wrangle factors.
+
+In R, factors have two components: the actual values of the data and the possible values the data could take (the latter are usually called "levels" of the factor). Thus, to create a factor, you need to supply both these pieces of information. We'll explore this now.
+
+## basics
+
+Imagine that you have a variable that records month:
+
+```{r}
+
+mo <- c("Dec", "Apr", "Jan", "Mar")
+mo
+
+```
+
+We see that by default, 'mo' is defined as a character vector
+
+```{r}
+
+typeof(mo)
+
+```
+
+This is fine, but it is different from a random set of strings, such as this list:
+
+```{r}
+
+apes <- c("gorillas", "orangutans", "chimpanzees", "bonobos")
+apes
+
+```
+
+For most people, there is no inherent order to the great ape names, while we all readily recognize 'months' as a variable that has an inherent chronological order.
+
+So, storing months as a character vector has two problems.
+
+First, although there are only twelve possible months, there's nothing stopping us from typos:
+
+```{r}
+
+mo2 <- c("Dec", "Apr", "Jam", "Mar")
+mo2
+
+```
+
+Second, these values are sorted in the default way R sorts strings, which is alphabetical. This isn't especially useful here:
+
+```{r}
+
+sort(mo2)
+
+#even if we ignore the typo:
+sort(mo)
+
+```
+
+
+## setting factor levels
+
+Setting month as a factor solves both of these problems. To create a factor we start by creating a list of all the valid levels (values that the factor can take), listing them in the order that makes sense for our data:
+
+```{r}
+
+month_levels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+```
+
+We can now create a factor using `factor()`:
+
+```{r}
+
+#look at original vector
+mo
+
+# convert to a factor
+mos <- factor(mo, levels = month_levels)
+mos
+
+```
+
+When we do this, the inputs will be sorted in the order we specify (here, chronologically), not the default order that R imposes (alphabetically)
+
+```{r}
+
+sort(mos)
+
+```
+
+Note that setting this as a factor also alerts us to the typo in 'mo2'. When we convert 'mo2' to a factor, the typo "Jam" gets replaced with an '<NA>' because "Jam" is not one of the permitted levels designated in 'month_levels'. 
+
+```{r}
+
+mo2
+mo2s <- factor(mo2, levels = month_levels)
+# typo is now replaced with an <NA>
+mo2s
+
+```
+
+This is handy and saves us from potential problems that we could have introduced when entering data.
+
+
+## changing factor levels
+
+Let's imagine that we were interested in ordering our months to start with July (the typical academic fiscal calendar). We could do this in the same way we did above, just listing the factors in a different order, so `month_levels <- c(  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun")`. But we could also do this by changing the order of the vector we already created, using `fct_relevel()`.
+
+To use this function, we tell R what factor we would like to re-level, list the levels you want to re-level, and specify where we want the levels moved to (using 'after ='). The location we want to move it to is given as a number, which is the position in the string. 
+
+Here is a simple example. We'll create a factor listing the first ten letters alphabet. We do this taking advantage of the fact that `letters` and `LETTERS` are built into R (Tip: this is useful to know if you want to label panels in a plot).
+
+```{r}
+
+# show built in letters:
+letters
+LETTERS
+
+# save the first ten letters as an object
+letts <- factor(letters[1:10])
+letts
+
+```
+
+Imagine we want to move the first two letters to end of the list. We use `fct_relevel()` and give it the factor we want to re-level ('letts'), which factors we want to move (here, "a" and "b") and where we want to move it (after the tenth item in the list):
+
+```{r}
+
+fct_relevel(letts, "a", "b", after = 10)
+
+# Note that you could also do this with a pipe:
+letts %>% 
+  fct_relevel("a", "b", after = 10)
+
+```
+
+Here we move them after the 5th letter in the list
+
+```{r}
+
+fct_relevel(letts, "a", "b", after = 5)
+
+```
+
+This highlights a potentially confusing thing, which is that the number 'after =' refers to is the number in the list once the items to be re-leveled are removed (i.e., the position in the re-leveled list). So, 'after = 5' refers to the 5th letter after "a" and "b" have been removed, "g", not the fifth letter in the original list, "e". I suggest modifying the code a few times to get a sense of the way this works. Note, if you want to re-level something to the beginning of the new factor list, 'after = 0'. Try this now:
+
+```{r}
+
+
+
+```
+
+So, to return to our task: re-leveling the 'mos' to start with July. We could do it in one of two ways. We could 1) move the months Jan-June to the end, or 2) move the months July-Dec to the beginning.
+
+```{r}
+
+# initial data, sorted by calendar year
+mos
+sort(mos)
+
+# 1) re-level by moving the first six months to the end:
+mon_relevel1 <- fct_relevel(mos, "Jan", "Feb", "Mar", 
+                            "Apr", "May", "Jun", 
+                           after = 6)
+mon_relevel1
+
+# 2) re-level by moving the last six months to the start:
+mon_relevel2 <- fct_relevel(mos, "Jul", "Aug", "Sep", 
+                            "Oct", "Nov", "Dec", 
+                           after = 0)
+mon_relevel2
+
+```
+
+If you'd like to learn more about working with factor data, here is a good place to start:
+
+https://jhudatascience.org/tidyversecourse/wrangle-data.html#advanced-factoring
+
+Today's problem set will give you the opportunity to practice some data wrangling skills with {forcats}.
+
+
+# Extended example
+
+For the rest of class, we're going to use 'gss_cat' which is loaded by default when we load {forcats}, which we did when we loaded {tidyverse}. 'gss_cat' is a sample of data from the General Social Survey (https://gss.norc.org), a long-running US survey conducted by the independent research organization NORC at the University of Chicago. The is example is slightly modified version of an exercise in Wickham et al.'s R for Data Science (2e), found here: https://r4ds.hadley.nz/
+
+This exercise will illustrate some common challenges you'll encounter when working with factors. We start by looking at the data, and getting some additional information about it (which will appear in the Help tab):
+
+```{r}
+
+gss_cat
+?gss_cat
+
+```
+
+When factors are stored in a tibble, you can't see their levels very easily easily. One way to view them is with `count()`:
+
+```{r}
+
+gss_cat %>% 
+  count(partyid)
+
+```
+
+This gives us a count of each unique value in the specified column, here 'partyid'. Note the the {base} function `table()`, which we learned early in the semester, would do the same thing:
+
+```{r}
+
+table(gss_cat$partyid)
+
+```
+
+But we'll stick with the {tidyverse} tools, as we have been doing. That way we can use other {tidyverse} functions to explore the data. For example, we can group by 'partyid', calculate the mean age in each group, and list the output in ascending order.
+
+```{r}
+
+gss_cat %>% 
+  group_by(partyid) %>% 
+  summarize(mean_age = mean(age, na.rm = TRUE)) %>% 
+  arrange(mean_age)
+
+```
+
+When working with factors, the two most common operations are changing the order of the levels, and changing the values of the levels. We'll explore each in turn below.
+
+
+## modifying factor order 
+
+It's often useful to change the order of the factor levels in a visualization. For example, imagine you want to plot the average number of hours spent watching TV per day across religions. First we calculate the data we want, then plot it:
+
+```{r}
+
+relig_summary <- gss_cat %>% 
+  group_by(relig) %>% 
+  summarize(tvhours = mean(tvhours, na.rm = TRUE),
+           n = n())
+
+relig_summary
+
+ggplot(relig_summary, aes(x = tvhours, y = relig)) + 
+  geom_point() +
+  theme_minimal()
+
+```
+
+The y-axis is ordered seemingly arbitrarily making it hard to get any sense of overall pattern.
+
+We can improve it by reordering the levels of `relig` using `fct_reorder()`. `fct_reorder()` takes three arguments:
+
+- `.f`, the factor whose levels you want to modify.
+- `.x`, a numeric vector that you want to use to reorder the levels.
+-  Optionally, `.fun`, a function that's used if there are multiple values of `.x` for each value of `.f`. The default value is `median`.
+
+```{r}
+
+ggplot(relig_summary, aes(x = tvhours, 
+                          y = fct_reorder(relig, tvhours))) +
+  geom_point() +
+  theme_minimal() 
+
+```
+
+This is the same scatterplot as above, but now the religion is displayed in increasing order of tvhours. Reordering religion makes it much easier to see that people in the "Don't know" category watch much more TV (> 5 hours) and Hinduism & Other Eastern religions watch much less (< 2 hours).
+
+As you start making more complicated transformations, it generally makes the code easier to write and understand by moving transformation out of `aes()` and into a separate `mutate()` step. For example, you could rewrite the plot above as:
+
+```{r}
+
+relig_summary %>% 
+  mutate(relig = fct_reorder(relig, tvhours)) %>% 
+  ggplot(aes(x = tvhours, y = relig)) +
+  geom_point()  +
+  theme_minimal() 
+
+```
+
+What if we create a similar plot looking at how average age varies across reported income level. We do that below, reordering the income by mean age:
+
+```{r}
+
+rincome_summary <- gss_cat %>% 
+  group_by(rincome) %>% 
+  summarize(age = mean(age, na.rm = TRUE),
+    n = n())
+
+ggplot(rincome_summary, aes(x = age, 
+                            y = fct_reorder(rincome, age))) + 
+  geom_point() +
+  theme_minimal() 
+
+```
+
+Here, arbitrarily reordering the levels isn't a good idea! That's because `rincome` already has an intuitive order that we shouldn't mess with. In general,`fct_reorder()` should be reserved for factors whose levels are arbitrarily ordered. Here we reordered income category based on age, but it means that the income categories are no longer in a sensible order. Here we keep the natural order, and we get a better sense of what is going on.
+
+```{r}
+
+ggplot(rincome_summary, aes(x = age, y = rincome)) + 
+  geom_point() +
+  theme_minimal() 
+
+```
+
+However, it does make sense to pull "Not applicable" to the front with the other special levels. As above, we can use `fct_relevel()`, but we can use a trick we didn't learn above, which is that if there are factors we want to move "to the front of the line", we can simply list them after listing the column we want to re-level. 
+
+Here is a simple example, using the 'letts' factor we made above:
+
+```{r}
+
+# view letts
+letts
+
+# move "d" first
+fct_relevel(letts, "d")
+
+# move "d" and "g" first
+fct_relevel(letts, c("d", "g"))
+
+```
+
+We use this to move the "Not applicable".
+
+```{r}
+
+ggplot(rincome_summary, aes(x = age, 
+                            y = fct_relevel(rincome, "Not applicable"))) +
+  geom_point() +
+  theme_minimal() 
+
+```
+
+This looks better, but the y-axis is sorted from lowest income on top to the highest on the bottom. We are used to seeing values increase as we go up a y-axis. So, we can reverse the limits of the y-axis scale using `scale_y_discrete(limits = rev)`.
+
+```{r}
+
+ggplot(rincome_summary, aes(x = age, 
+                            y = fct_relevel(rincome, "Not applicable"))) +
+  geom_point() +
+  theme_minimal() +
+  scale_y_discrete(limits = rev)
+
+```
+
+We can now clearly see that reported income increases fairly clearly with age.
+
+For bar plots, you can use `fct_infreq()` to order levels in decreasing frequency: this is the simplest type of reordering because it doesn't need any extra variables. Combine it with `fct_rev()` if you want them in increasing frequency so that in the bar plot largest values are on the right, not the left.
+
+```{r}
+
+gss_cat %>% 
+  mutate(marital = marital %>%  
+           fct_infreq() %>%  
+           fct_rev()) %>% 
+  ggplot(aes(x = marital)) +
+  geom_bar() +
+  theme_minimal()
+
+```
+
+## modifying factor levels
+
+More powerful than changing the orders of the levels is changing their values. This allows us to clarify labels for publication, and collapse levels for high-level displays. The most general and powerful tool is `fct_recode()`. It allows us to recode, or change, the value of each level. For example, take the `partyid` variable from the `gss_cat` data frame:
+
+```{r}
+
+gss_cat %>% 
+  count(partyid)
+
+```
+
+The levels are terse and inconsistent. Let's tweak them to be longer and use a parallel construction. Like most rename and recoding functions in the tidyverse, the new values go on the left and the old values go on the right. Note also the use of spacing so all the equal signs line up, which makes the code easier to read.
+
+```{r}
+
+gss_cat %>% 
+  mutate(
+    partyid = fct_recode(partyid,
+      "Republican, strong"    = "Strong republican",
+      "Republican, weak"      = "Not str republican",
+      "Independent, near rep" = "Ind,near rep",
+      "Independent, near dem" = "Ind,near dem",
+      "Democrat, weak"        = "Not str democrat",
+      "Democrat, strong"      = "Strong democrat")
+         ) %>% 
+  count(partyid)
+
+```
+
+`fct_recode()` will leave the levels that aren't explicitly mentioned as is, and will warn us if we accidentally refer to a level that doesn't exist. To combine groups, we can assign multiple old levels to the same new level:
+
+```{r}
+
+gss_cat %>% 
+  mutate(
+    partyid = fct_recode(partyid,
+      "Republican, strong"    = "Strong republican",
+      "Republican, weak"      = "Not str republican",
+      "Independent, near rep" = "Ind,near rep",
+      "Independent, near dem" = "Ind,near dem",
+      "Democrat, weak"        = "Not str democrat",
+      "Democrat, strong"      = "Strong democrat",
+      "Other"                 = "No answer",
+      "Other"                 = "Don't know",
+      "Other"                 = "Other party")
+       ) %>% 
+  count(partyid)
+
+
+```
+
+Use this technique with care: if we group together categories that are truly different we will end up with misleading results.
+
+If we want to collapse a lot of levels, `fct_collapse()` is a useful variant of `fct_recode()`. For each new variable, we can provide a vector of old levels:
+
+```{r}
+
+gss_cat %>% 
+  mutate(partyid = fct_collapse(partyid,
+      "other" = c("No answer", "Don't know", "Other party"),
+      "rep" = c("Strong republican", "Not str republican"),
+      "ind" = c("Ind,near rep", "Independent", "Ind,near dem"),
+      "dem" = c("Not str democrat", "Strong democrat"))
+        ) %>% 
+  count(partyid)
+
+```
+
+Sometimes we just want to lump together the small groups to make a plot or table simpler. That's the job of the `fct_lump_*()` family of functions.
+
+`fct_lump_lowfreq()` is a simple starting point that progressively lumps the smallest groups categories into "Other", always keeping "Other" as the smallest category.
+
+```{r}
+
+gss_cat %>% 
+  mutate(relig = fct_lump_lowfreq(relig)) %>% 
+  count(relig)
+
+```
+
+In this case it's not very helpful: it is true that the majority of Americans in this survey are Protestant, but we'd probably like to see some more details! Instead, we can use the `fct_lump_n()` to specify that we want exactly 10 groups:
+
+```{r}
+
+gss_cat %>% 
+  mutate(relig = fct_lump_n(relig, n = 10)) %>% 
+  count(relig, sort = TRUE)
+
+```
+

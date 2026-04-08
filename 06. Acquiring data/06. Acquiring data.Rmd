@@ -1,0 +1,575 @@
+
+06. Acquiring & wrangling data
+
+As in some other lectures, some of today's code and data are taken or modified from existing examples. Below I will credit these where relevant, but I acknowledge and commend to you the following three sources in particular:
+
+- R for Data Science (2e) by Hadley Wickham, Mine Çetinkaya-Rundel, and Garrett Grolemund: https://r4ds.hadley.nz
+
+- Introduction to Programming with R by Reto Stauffer, Joanna Chimiak-Opoka, Luis Miguel Rodríguez-R, Thorsten Simon, and Achim Zeileis: https://discdown.org/rprogramming/index.html
+
+- Tidyverse Skills for Data Science by Carrie Wright, Shannon E. Ellis, Stephanie C. Hicks and Roger D. Peng: https://jhudatascience.org/tidyversecourse/
+
+# Acquiring data
+
+## file formats
+
+R can read in data from a ton of different formats. In this class, we'll focus on the kinds of data you are most likely to encounter: .csv, .xlsx, and googlesheets data or data from R's own binary formats .rda and .rds. Most folks I know who use R use .csv files, although more advanced users tend towards R's file formats (probably because their binary formats make the files much smaller for a given amount of data).
+
+## additional packages
+
+Additional R packages allow to read a wide variety of data formats. Here are a few packages might be of use down the line:
+
+{sf}, {sp}:          standard spatial data (polygons, points, lines).
+{raster}, {stars}:   gridded spatial data
+{rjson}:             JSON (JavaScript Object Notation) data
+{xml2}:              xml files
+{png}, {jpeg}:       raster images
+{RSQLite}, {RMySQL}: data in relational data bases
+{foreign}, {haven}:  data from SAS, SPSS, Stata, etc
+
+
+## .csv
+
+Like other spreadsheet formats (.xlsx, googlesheets), comma-separated values (CSV) files allow us to store data tables. The benefit over other formats is that they are much simpler; they are plain-text files, which means that all the important information in the file is represented by text. There are no workbooks or associated metadata that can make it difficult to open these files. This makes them very flexible and super simple, making them preferred storage method for data for many of us. (e.g., https://github.com/andrewjohnmarshall/gp_orangutan_dispersion/tree/main/data%20files)
+
+In .csv files, each data cell is separated by a comma, and each line by a line break, making it very easy to load:
+
+```{r}
+
+commas <- read.csv("commas.csv")
+commas
+
+# some simple commands to explore data
+str(commas)   # show data structure
+head(commas)  # show first few rows
+tail(commas)  # show last few rows
+names(commas) # show headers
+dim(commas)   # show dimensions (rows, commas)
+nrow(commas)  # show number of rows
+ncol(commas)  # show number of columns
+
+```
+
+This data set came from a fivethrirtyeight article on people's attitudes towards the "serial" or "oxford" comma. https://fivethirtyeight.com/features/elitist-superfluous-or-popular-we-polled-americans-on-the-oxford-comma/
+
+Despite this general simplicity, there are still sticking points. For instance, in much of Europe, commas are used as decimal points. In these instances, values are typically separated by semicolons (;), not commas (,). `read.csv2()` solves this for us, as it uses semicolons as separators, rather than commas, and interprets commas as decimal points. For tab-delimited data, `read.delim()` and `read_delim2()` serve the same purpose.
+
+In the {tidyverse}, there is package designed to read in simple delimited data, {readr}. {readr} supports the following file formats with these read_*() functions:
+
+`read_csv()`   : comma-separated values (CSV)
+`read_tsv()`   : tab-separated values (TSV)
+`read_csv2()`  : semicolon-separated values with , as the decimal mark
+`read_delim()` : delimited files (CSV and TSV are important special cases)
+`read_fwf()`   : fixed-width files
+`read_table()` : whitespace-separated files
+`read_log()`   : web log files
+
+We read in the commas data set again, this time using {readr}, which comes included in the omnibus {tidyverse} package.
+
+```{r}
+
+#install.packages("tidyverse")
+library(tidyverse)
+COMMAS <- read_csv("commas.csv")
+COMMAS
+
+```
+
+You see that the data looks different than when we pulled the data in using `read.csv()`. We can confirm that it is not the same, and that the two have slightly different structures and appearances (although they both read in the same data).
+
+```{r}
+
+identical(commas, COMMAS)
+
+str(commas)     # look at structure
+str(COMMAS)
+
+dim(commas)     # look at dimensions
+dim(COMMAS)
+
+head(commas)    # see first few lines
+head(COMMAS)
+
+```
+
+'COMMAS' is a "tibble", the {tidyverse}'s version of a data table. We'll look at it more in a bit.
+
+## .xls / .xlsx
+
+Excel is great for lots of things. Storing data in a simple, reliable format is not one of them. Still, excel files are ubiquitous, so we should know how to import data from them. Reading spreadsheets from Excel into R is made possible thanks to the {readxl} package. This is not a core {tidyverse} package, so we need to load the package first (it should be installed already, so I have commented out the installation line). We load the package:
+
+```{r}
+
+#install.packages("readxl")
+library(readxl)
+
+```
+
+and read in data using the `read_excel()` command:
+
+```{r}
+
+os <- read_excel("office_supplies_orders.xlsx")
+os
+
+```
+
+I downloaded this data set on office supplies orders from (2026-01-26):
+https://www.contextures.com/xlsampledata01.html#data
+
+Note that above (as with the .csv file) we didn't have to list a full file path, just the file name, because the file is in the working directory (by default, the same directory as the project)
+
+'os' is now an R object, and we can treat it as any other in R. e.g., 
+
+```{r}
+
+str(os)  # show structure
+dim(os)  # show dimensions
+os$Rep   # select columns
+os[1,2]  # select cell [row, column]
+os[1,]   # select row, all columns for that row
+os[, 7]   # select column, all rows for that column
+
+```
+
+Another very basic and really useful tool is `table()`. It shows the number of occurrences of each unique value in a vector.
+
+```{r}
+
+os$Rep
+table(os$Rep)  
+os$Item
+table(os$Item)  
+
+```
+
+You can table by two variables at once, too. The first argument are the table rows, the second the table columns
+
+```{r}
+
+table(os$Rep, os$Item)  
+
+```
+
+
+
+
+## google sheets
+
+The {googlesheets4} package allows us to take advantage of the Google Sheets Application Programming Interface (API). Very generally, APIs allow different applications to communicate with one another. In this case, Google has released an API that allows other software to communicate with Google Sheets and retrieve data and information directly from Google Sheets. The {googlesheets4} package is the easiest way to access the Google Sheets API and retrieve your Google Sheets data.
+
+The basic approach is:
+
+```{r}
+
+#install.packages("googlesheets4")
+library(googlesheets4)
+
+file_name <- read_sheet("google sheet URL")
+
+```
+
+Because you are accessing the data directly from the sheet, you need access to the account to which the sheet belongs. This requires some additional authentication. The process is pretty simple, and once completed allows you to list all of your Google worksheets a once using `gs4_find()`
+
+If you'd like to know more about this, please see:
+
+https://googlesheets4.tidyverse.org or
+https://jhudatascience.org/tidyversecourse/get-data.html#google-sheets
+
+Note there is a related package that allows you to access data directly from Google Drive, but in a wider variety of formats: `googledrive()`.
+
+
+## rda files
+
+RDA ("R Data") files are one of R's two binary data formats. Their key attributes are:
+
+- file extension (typically): .rda, .Rda, or .RData
+- can take up one or multiple different R objects
+- preserves the name(s) of the object(s) stored
+
+Simple commands to work with them are:
+
+`load()`: read/load existing files
+`save()`: write/save data
+
+Here we load a file in from an *.rda file, first confirming it is not there before and is afterwards.
+
+```{r}
+
+ls()    # list the objects in environment
+load(file = "trees.rda")
+ls()    # data are now there
+
+```
+
+I made this data file from the 'trees' data set that is built into R. See `?trees()` for the citation.
+
+You see the key attributes of an *.rda file:
+- names are preserved: `load()` creates objects with specific names, the names of the objects originally stored in the RDA file
+- it can contain multiple R objects
+
+We can now use these data per usual:
+
+```{r}
+
+girth
+2 * girth
+
+```
+
+Finally, we remove it from the environment using `rm()`:
+
+```{r}
+
+rm(girth, height, volume)
+ls()
+
+```
+
+We'll make a new RDA file, based on R's built in 'cars' data set, then save it, and confirm it is there.
+
+```{r}
+
+head(cars)             # show data set (not required)
+SPEED <- cars$speed    # make a new object
+DIST  <- cars$speed    # make another new object
+
+save(SPEED, DIST, file = "CARS.rda")  #save file
+list.files()           # confirm it is there
+
+```
+
+We remove all files from the environment using `rm(list = ls())`. Note, this does not delete the files!
+
+```{r}
+
+ls()
+rm(list = ls())
+ls()
+
+```
+
+
+## rds files
+
+RDS ("serialized R data") files are the other of R's two binary data formats. Their key attributes are:
+
+- file extension (typically) .rds, or .Rds.
+- for only one single object
+- does not preserve the name of the object saved.
+
+`readRDS()`: read/load existing files
+`saveRDS()`: write/save data
+
+When reading in *.rds files there is one important difference from `load()` that we used above for RDA files. When calling `readRDS()` the object loaded from the RDS file is returned after reading the binary file. Thus, we need to assign (<-) the return to an object. If not, the object will be printed but not stored, wherefore you can’t use it afterwards
+
+```{r}
+
+# first, read in data
+readRDS("earthquakes.rds")
+
+# and show it is not stored
+ls()
+
+# read in data and assign it to an object
+QUAKES <- readRDS("earthquakes.rds")
+
+# now it is there
+ls()
+
+```
+
+I made this data file from the 'quakes' data set that is built into R. See `?quakes()` for the citation.
+
+As above, we can now use our new object as with any other
+
+```{r}
+
+str(QUAKES)
+tail(QUAKES)
+ncol(QUAKES)
+QUAKES$mag
+hist(QUAKES$depth)
+
+```
+
+We can create files easily, but now using the `saveRDS()` function. We use the built in data set 'mtcars':
+
+```{r}
+
+head(mtcars)
+saveRDS(mtcars, "MTCARS.rds")
+
+```
+
+As usual, we can see it in the Files tab. Here we pull it back in, save it as object z, and compare it to the original data set:
+
+```{r}
+
+z <- readRDS("MTCARS.rds")
+identical(mtcars, z)
+table(mtcars == z)
+
+```
+
+and remove it:
+
+```{r}
+
+file.remove("MTCARS.rds")
+list.files()
+
+```
+
+Note that, unlike `rm(list = ls())`, `file.remove()` does delete files from the project directory.
+
+
+## your turn
+
+1. Make an object 'x1' containing 1000 numbers drawn from a normal distribution, with a mean of 5 and sd of 2. (need help?, type "?rnorm")
+
+2. Make another object, 'x2', with another 1000 random numbers from the normal distribution, this time with a mean of 4 and sd of 4.
+
+3. Combine x1 and x2 into a single *matrix* (not a single *vector*), called 'my_num'. Check its dimensions.
+
+4. Save 'my_num' as a csv file. I haven't taught you how to do this. Try `write.csv()`. Need help? `?write.csv`
+
+5. Save 'my_num' as an rda file
+
+
+```{r}
+
+
+
+```
+
+A sample answer is below, but work through this on your own - it is the only way to truly learn!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+# 1. Make an object 'x1' containing 1000 numbers drawn from a normal distribution, with a mean of 5 and sd of 2.
+
+x1 <- rnorm(1000, 
+            mean =  5, 
+            sd = 2)
+
+# 2. Make another object, 'x2', with another 1000 random numbers from the normal distribution, this time with a mean of 4 and sd of 4.
+
+x2 <- rnorm(1000, 
+            mean = 4, 
+            sd = 4)
+
+# 3. Combine x1 and x2 into a single *matrix* (not a single *vector*), called 'my_num'. Check its dimensions.
+
+my_num <- cbind(x1, x2)
+dim(my_num)
+
+# 4. Save 'my_num' as a csv file. I haven't taught you how to do this. Try `write.csv()`. Need help? `?write.csv`
+
+write.csv(my_num, "my_num.csv")
+
+# 5. Save 'my_num' as an rda file
+
+save(my_num, 
+     file = "my_num.rda")
+
+```
+
+# Intro to the tidyverse
+
+## load packages
+
+Here we load the basic suite of {tidyverse} packages, if you didn't do so above.
+
+```{r}
+
+library(tidyverse)
+
+```
+
+Here is a list of the {tidyverse} packages that are installed by default: https://www.tidyverse.org/packages/
+
+
+
+
+## infix operators
+
+Infix operators are mechanisms for chaining commands. Colloquially, we refer to them as "pipes". Classically, the {tidyverse} used the characters '%>%' to define a pipe. 
+
+```{r}
+
+# The following pairs are functionally equivalent:
+cars %>% head()
+head(cars)
+
+cars %>% head() %>% summary()
+summary(head(cars))
+
+```  
+
+You can use the pipe to rewrite multiple operations in a way that you can read left-to-right, top-to-bottom. 
+
+As of the 4.1 release of base R, "pipes" have been added, using "|>"
+
+```{r}
+
+cars |> head()
+cars |> head() |> summary()
+
+```
+
+I am seeing the {base} R pipe cropping up more and more in {tidyverse} code, including in Wickham's own *R for Data Science* book. See https://r4ds.hadley.nz/data-transform.html#sec-the-pipe
+
+For most beginner to intermediate uses, the new base R pipe '|>' is equivalent to the {tidyverse}’s pipe '%>%'. When using {tidyverse} functions, I see no reason at present to use the new (but ultimately more limited) '|>', so I will continue to use '%>%'. You may use either. 
+
+
+The shortcut to insert a pipe is:
+
+Command + Shift + M  (Mac)
+Ctrl + Shift + M     (Windows)
+
+Try it:
+
+```{r}
+
+
+
+```
+
+Which pipe is added depends on your settings. But default, it is the original  {tidyverse} pipe '%>%', but you can change this in Tools -> Global options -> Code editor
+
+
+If you want to know more, you can read Hadley Wickham's thoughts on this here:
+
+https://www.tidyverse.org/blog/2023/04/base-vs-magrittr-pipe/
+
+Whether you use pipes or not is largely a matter of style, although one or the other may be preferred in some contexts to improve readability.
+
+Pipes are widely used in to Hadley Wickham's tidyverse. The only exception is {ggplot2}: it was written before the pipe was created. 
+
+## tibbles
+
+Tibbles are alternatives to R's traditional data.frames. Tibbles are data frames, but slightly tweaked to work better in the tidyverse. 
+
+According to the rstudio team "A tibble , or tbl_df , is a modern re-imagining of the data.frame, keeping what time has proven to be effective, and throwing out what is not. Tibbles are data.frames that are lazy and surly: they do less (i.e. they don't change variable names or types, and don't do partial matching) and complain more (e.g. when a variable does not exist). This forces you to confront problems earlier, typically leading to cleaner, more expressive code." Here we'll import a commonly-used data set {nycflights13} to see how tibbles look.
+
+```{r}
+
+#install.packages("nycflights13")
+library("nycflights13")
+# call in a dataframe from the {nycflights13} database
+flights
+
+```
+
+Tibble data frames print a little differently from other data frames we have used in the past: they only show the first few rows and all the columns that fit on one screen. (To see the whole data set, you can run `View(flights)` which will open the data set in the RStudio viewer- note that if you try this, it might take a minute or two to render).
+
+The row of three letter abbreviations under the column names describe the type of each variable, a feature borrowed from str():
+
+    `lgl` = logical (i.e., contain only `TRUE` or `FALSE`)
+    `int` = integers.
+    `dbl` = doubles, or real numbers.
+    `chr` = character vectors, or strings.
+
+```{r}
+
+# compare:
+mtcars
+as_tibble(mtcars)
+
+```
+
+Let's look again at the flights data set:
+
+```{r}
+
+flights
+
+```
+
+One obvious question one might have looking at tibbles is why some numbers are underlined. According to 'tidyverse' documentation, this is done in tibbles to "give better idea of the order of magnitude of the numbers". Groups of three digits are underlined, starting with the fourth before/after the decimal point. Essentially this works like the comma separator for 1,000s, but holds on both sides of the decimal point. A simple example:
+
+```{r}
+
+x <- -123456789 * (10 ^ c(-2, -5, -6, NA, -8, -10)) * c(-1, 1)
+x
+
+tibble(x)
+
+```
+
+You can see negative values are also indicated in red.
+
+#### printing
+
+When printed, tibbles show only the first 10 rows, and all the columns that fit on screen. Tibbles are designed so that you don't accidentally overwhelm your console when you print large data frames. But sometimes you need more output than the default display. There are a few options that can help.
+
+First, you can explicitly `print()` the data frame and control the number of rows (`n`) and the `width` of the display. `width = Inf` will display all columns (this produces an output that is more similar to that produced by base R):
+
+```{r}
+
+flights %>% 
+     print(n = 10, width = Inf)
+
+```
+
+Some older functions don't work with tibbles. If you encounter one of these functions, use `as.data.frame()` to turn a tibble back to a data frame:
+     
+```{r}
+
+flights
+fl2 <- as.data.frame(flights)
+fl2
+
+```
+

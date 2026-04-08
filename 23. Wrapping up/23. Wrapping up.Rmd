@@ -1,0 +1,409 @@
+
+23. Wrapping up
+
+Lots of amazing presentations to come!
+
+# Packages
+
+```{r}
+
+library(gganimate)
+library(gapminder)
+library(wordcloud2)
+options(gutenbergr.mirror = "https://aleph.pglaf.org/")
+library(gutenbergr)
+library(tm)
+library(tidyverse)
+library(gifski)
+
+```
+
+
+# Animation with {gganimate}
+
+{gganimate} is a {ggplot2} that extends the grammar of graphics to produce animated plots. As it builds upon {ggplot2}, much of the code will look pretty familiar.
+
+The {gganimate} package adds functionality with several core functions:
+
+`transition_*()`     : controls data transition
+`enter_*()/exit_*()` : controls how data should appear and disappear
+`ease_aes()`         : controls how different aesthetics should be eased during transitions
+`view_*()`           : controls how positional scales should change
+`shadow_*()`         : controls how points from a previous frame should be displayed in a current frame
+
+We’ll walk through these grammar classes using the mtcars data set.
+
+First, using the mtcars data set we generate a static boxplot looking at the relationship between the number of cylinders a car has (cyl) and its gas mileage (mpg).
+
+```{r}
+
+ggplot(mtcars) + 
+  geom_boxplot(aes(factor(cyl), mpg))
+
+```
+
+But what if we wanted to understand the relationship between those two variables and the number of gears a car has (gear)?
+
+One option would be to use faceting:
+
+```{r}
+
+ggplot(mtcars) + 
+  geom_boxplot(aes(factor(cyl), mpg)) +
+  facet_wrap(~gear)
+
+```
+
+Alternatively, we could animate the plot, using gganimate so that on a single plot we rotate between each of these three plots.
+
+## transitions
+
+We’ll transition in this example between frames by gear:
+
+```{r}
+
+p <- mtcars %>%
+  mutate(gear = factor(gear),
+         cyl = factor(cyl)) %>%
+  ggplot() + 
+  geom_boxplot(aes(cyl, mpg)) + 
+  transition_manual(gear)
+
+animate(p, nframes = 100, renderer = gifski_renderer())
+
+```
+
+Note that the animation will appear in the "Viewer" pane, not the "Plot" pane. Note also that here, `transition_manual()` is a new grammar class that we add right on top of our ggplot2 plot code. Within this grammar class, we specify the variable upon which we’d like the transition in the animation to occur.
+
+This means that the number of frames in the animation will be the number of levels in the variable by which you’re transitioning. Here, there will be 3 frames, as there are three different levels of gear in the mtcars data set.
+
+`transition_manual()` is not the only option for transition. In fact, there are a number of different `transition_*` options, depending upon your animation needs. One of the most commonly used is `transition_states()`. The animation will plot the same information as the example above; however, it allows for finer tune control of the animation
+
+```{r}
+
+anim <- ggplot(mtcars) + 
+  geom_boxplot(aes(factor(cyl), mpg)) + 
+  transition_states(gear,
+                    transition_length = 2,
+                    state_length = 1)
+
+animate(anim, nframes = 100, renderer = gifski_renderer())
+
+```
+
+
+Note here that we’ve stored the output from transition_states in the object 'anim'. We’ll build on this object below.
+
+## labels
+
+Currently, it’s hard to know which frame corresponds to which gear. To make this easier on the viewer, let’s label our animation:
+
+```{r}
+
+anim <- anim +  
+  labs(title = 'Now showing gear: {closest_state}')
+
+animate(anim, nframes = 100, renderer = gifski_renderer())
+
+```
+
+Note that we’re referring to the appropriate gear within the animation frame by specifying {closest_state}.
+
+## easing
+
+Easing determines how the change from one value to another should occur. The default is linear, but there are other options that will control the appearance of progression in your animation. for example, ‘cubic-in-out’ allows for the start and end of the animation to have a smoother look.
+
+```{r}
+
+anim <- anim + 
+  # Slow start and end for a smoother look
+  ease_aes('cubic-in-out')
+
+animate(anim, nframes = 100, renderer = gifski_renderer())
+
+```
+
+There are a number of easing functions, all of which are listed within the documentation, which can be viewed, as always, using the ? help function: `?ease_aes`.
+
+## enter & exit
+
+Building on top of easing, we can also control how the data appears (enters) and disappears (exits), using `enter_*` and `exit_*`:
+
+```{r}
+
+anim <- anim + 
+  # fade to enter
+  enter_fade() +
+  # shrink on exit
+  exit_shrink()
+
+animate(anim, nframes = 100, renderer = gifski_renderer())
+
+```
+
+The changes are subtle but you’ll notice that on transition the data fades in to appear and shrinks upon exit.
+
+## position scales
+
+To demonstrate how changing positional scales can be adjusted, let’s take a look at a scatterplot. Here, we’re plotting the relationship between 1/4 mile speed and miles per gallon and we’ll be transitioning between gear.
+
+The static plot would be as follows:
+
+```{r}
+
+ggplot(mtcars) + 
+  geom_point(aes(qsec, mpg))
+
+```
+
+However, upon adding animation, we see how the data changes by gear.
+
+```{r}
+
+scat <- ggplot(mtcars) + 
+  geom_point(aes(qsec, mpg)) + 
+  transition_states(gear,
+                    transition_length = 2,
+                    state_length = 1) +
+    labs(title = 'Now showing gear: {closest_state}')
+
+
+animate(scat, nframes = 100, renderer = gifski_renderer())
+
+```
+
+However, the x- and y-axes remain constant throughout the animation.
+
+If you wanted to allow these positional scales to adjust between each gear level, you could use view_step:
+
+
+```{r}
+
+scat +
+  view_step(pause_length = 2, 
+            step_length = 1, 
+            nsteps = 3, 
+            include = FALSE)
+
+animate(scat, nframes = 100, renderer = gifski_renderer())
+
+```
+
+
+## example: gapminder
+
+One of the most famous examples of an animated plot uses the gapminder data set. This data set includes economic data for countries all over the world. The animated plot here demonstrates the relationship between GDP (per capita) and life expectancy over time, by continent. Note that the year whose data is being displayed is shown at the top left portion of the plot.
+
+```{r}
+
+gap <- ggplot(gapminder, aes(gdpPercap, lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent, ncol = 5) +
+  theme_minimal() +
+  # animate it!
+  labs(title = 'Year: {frame_time}', x = 'GDP per capita', y = 'life expectancy') +
+  transition_time(year)
+
+animate(gap, nframes = 100, renderer = gifski_renderer())
+
+```
+
+Note that in this example, we’re now using `transition_time()` rather than `transition_states()`. This is a variant of `transition_states()` that is particularly useful when the states represent points in time, such as the years we’re animating through in the plot above. The transition length is set to correspond to the time difference between the points in the data.
+
+### shadow
+
+However, what if we didn’t want the data to completely disappear from one frame to the next and instead wanted to see the pattern emerge over time? We didn’t demonstrate this using the mtcars data set because each observation in that data set is a different car. However, here, with the gapminder data set, where we’re looking at a trend over time, it makes more sense to include a trail.
+
+To do this, we would use `shadow_*`. Here, we’ll use `shadow_trail()` to see a trail of the data from one frame to the next:
+
+```{r}
+
+gap +
+ shadow_trail(distance = 0.05,
+              alpha = 0.3)
+
+animate(gap, nframes = 100, renderer = gifski_renderer())
+
+```
+
+Here, distance specifies the temporal distance between the frames to show and alpha specifies the transparency of the trail, so that the current frame’s data is always discernible.
+
+Today's skill booster will give you the opportunity to hone your {gganimate} skills.
+
+
+# Word clouds
+
+Word clouds are popular ways to visually depict text data. In word clouds, the size of each word corresponds to its frequency of occurrence in the text, allowing for a quick overview of the most prominent terms. There are reasons to be skeptical of them, including that they do not promote quantitative interpretation of data. Still, they are popular, and you may be asked to produce one in the future.
+
+Typically, building word clouds from scratch requires a fair amount of data wrangling. So before progressing to building word clouds, we'll need to do some work to get the data in a usable format. For this, we'll use some tools in the {tm} package (text mining). For more information on {tm}, see https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf and https://rpubs.com/tsholliger/301914.
+
+First, we need some text to work with. We will be importing data provided by the {gutenburgr} package which provides easy access to many public domain documents in R. For more information about this great resource, see https://docs.ropensci.org/gutenbergr/, or the help file:
+
+```{r}
+
+?gutenbergr
+
+```
+
+There are a ton of works available!
+
+```{r}
+
+gutenberg_works() %>% 
+  select(title)
+
+```
+
+We are going to make a word cloud visualizing the most commonly used words in The United States Constitution. Here we load the data and examine its structure.
+
+```{r}
+
+const <- gutenberg_download(5) 
+str(const)
+head(const$text)
+
+```
+
+## creating a corpus object
+
+The first step to wrangling text data is to create a "Corpus" object that is compatible with the {tm} package. A corpus object is a collection of documents with specific attributes that facilitate text mining. 
+There are two types of corpus: 
+
+- a "Volitile Corpus" (VCorpus) is a temporary object within R and is the default when assigning documents to a corpus
+
+- a "Permanent Corpus" (PCorpus) is a permanent object that can be stored outside of R.
+
+Once the type of corpus is defined, it is then necessary to identify a source. To see what sources are available for the tm package, enter in the console.
+
+```{r}
+
+getSources()
+
+```
+
+For example:
+
+- "VectorSource" is a vector of characters (treats each component as a document)
+- "DataframeSource" is a data frame containing text (like CSV files)
+
+We do this the `VCoprus()` and `VectorSource()` functions, which are the most commonly used types.
+
+```{r}
+
+const <- VCorpus(VectorSource(const$text))
+str(const)
+
+```
+
+
+## wrangling data
+
+Looking at our data, we can see there is a fair amount of wrangling to do:
+
+```{r}
+
+View(const)
+
+```
+
+We use common `tm_map()` functions to clean up the text in a way that will facilitate our visualization. Specifically, we
+
+1. convert all letters to lowercase
+2. remove all numbers
+3. remove common English words
+4. remove punctuation
+5. remove extra white space 
+
+```{r}
+
+const <- tm_map(const, content_transformer(tolower))
+const <- tm_map(const, removeNumbers)
+const <- tm_map(const, removeWords, stopwords("english"))
+const <- tm_map(const, removePunctuation)
+const <- tm_map(const, stripWhitespace)
+
+```
+
+After wrangling our data, the next step is to turn it into a format appropriate for plotting. First, we create a term-document matrix from our text corpus using `TermDocumentMatrix()` and then convert it to a standard matrix. A TermDocumentMatrix is a mathematical matrix that describes the frequency of terms that occur in each document in a collection. For more information, see:
+https://en.wikipedia.org/wiki/Document-term_matrix
+
+```{r}
+
+dtm <- TermDocumentMatrix(const)
+str(dtm)
+matrix <- as.matrix(dtm)
+str(matrix)
+
+```
+
+Then we can calculate word frequencies by summing the rows, sorting them in decreasing order, and storing the results in a data frame:
+
+```{r}
+
+freq <- sort(rowSums(matrix), decreasing = TRUE)
+df <- data.frame(word = names(freq), freq = freq)
+head(df, 20)
+
+```
+
+We can see that the most frequently used word is "shall", which was commonly used when the US Constitution was written, but was not caught when we did `tm_map(const, removeWords, stopwords("english"))` above. We can remove this manually, so it does not overwhelm our word cloud:
+
+```{r}
+
+const <- tm_map(const, removeWords, "shall")
+
+dtm <- TermDocumentMatrix(const)
+matrix <- as.matrix(dtm)
+freq <- sort(rowSums(matrix), decreasing = TRUE)
+df <- data.frame(word = names(freq),freq = freq)
+head(df, 20)
+
+```
+
+We can see that "shall" is now gone. 
+
+Now, we can make our word cloud using the `wordcloud2()` function:  
+
+```{r}
+
+wordcloud2(data = df, backgroundColor = "grey",
+           rotateRatio = 0.5, color = "random-light")
+
+```
+
+Play around with the settings and see how it alters the output. You likely will want to Zoom in on the plot to see the full output. Common things we may wish to do include restricting the word cloud to words that appear a certain number of times (below, we use 8) and changing the shape. 
+
+```{r}
+
+
+wordcloud2(data = subset(df, freq >= 8),
+           backgroundColor = "tan", 
+           rotateRatio = 0.75, 
+           color = "random-dark",
+           shape = "triangle")
+
+```
+
+Explore the options available `?wordcloud2` and make some changes to the code to get a sense of how you can alter the appearance of your word cloud.
+
+Word clouds are useful for quickly perceiving the most prominent terms. they are widely used in media and well understood by the public. However, they are criticized for 2 main reasons:
+
+1) area is a poor representation of a numeric value, as people do not perceive it quantitatively. 
+
+2) longer words appear bigger and therefore more important, even if they are used less than shorter words
+
+So, often, considering an alternative is worthwhile.
+
+For more information on {wordcloud2}, see: https://cran.r-project.org/web/packages/wordcloud2/vignettes/wordcloud.html
+
+Today's problem set will give you an opportunity to develop your word cloud skills.
+
+# Whimsy
+
+Finally, if you are looking for a fun way to use R for creative expression see:
+
+https://github.com/koenderks/aRtsy
+
