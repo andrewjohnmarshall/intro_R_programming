@@ -5,8 +5,8 @@
 
 # Searches root directory for R project folders
 # and converts every .Rmd file in each folder to
-# a .R script with the same name in the same folder.
-# based on knitr::purl()
+# an .R script with the same name in the same folder.
+# Based on knitr::purl()
 
 library(knitr)
 
