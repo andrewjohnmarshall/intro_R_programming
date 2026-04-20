@@ -1,5 +1,5 @@
 # intro\_R\_programming
-In class materials for COMPFOR 133: Fundamentals of scientific computing in R, a course I taught at the University of Michigan from 2024-2026
+In class materials for COMPFOR 133: Fundamentals of scientific computing in R, a course I taught at the University of Michigan from 2024-2026.
 
 Each class session is its own R project and activities are intended to be run from each class’s .Rmd file in the relevant project folder.
 
